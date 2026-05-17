@@ -22,7 +22,7 @@ export default function LoginPage() {
     setTimeout(() => {
       setIsLoading(false)
       setStep('mfa')
-    }, 1000)
+    }, 800)
   }
 
   const handleMfa = async (e: React.FormEvent) => {
@@ -33,49 +33,41 @@ export default function LoginPage() {
     setTimeout(() => {
       setIsLoading(false)
       router.push('/dashboard')
-    }, 1000)
+    }, 800)
   }
 
   return (
-    <div className="min-h-screen bg-surface-300 flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] opacity-20"
-          style={{ background: 'radial-gradient(circle, #3b5fff, transparent)' }} />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] opacity-10"
-          style={{ background: 'radial-gradient(circle, #8b5cf6, transparent)' }} />
-      </div>
-
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md relative z-10"
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-[380px] relative z-10"
       >
-        <div className="glass-card p-8 rounded-3xl" style={{ border: '1px solid rgba(59, 95, 255, 0.2)' }}>
+        <div className="bg-popover border border-border p-8 rounded-xl shadow-modal">
           
           {/* Logo */}
           <div className="flex justify-center mb-8">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #3b5fff 0%, #8b5cf6 100%)', boxShadow: '0 8px 32px rgba(59, 95, 255, 0.3)' }}>
-              <FileText className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary text-primary-foreground shadow-subtle">
+              <FileText className="w-5 h-5" />
             </div>
           </div>
 
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold font-display text-foreground mb-2">
+            <h1 className="text-xl font-bold text-foreground mb-2">
               {step === 'credentials' ? 'Sign in to DocIntel' : 'Two-Factor Authentication'}
             </h1>
             <p className="text-sm text-muted-foreground">
               {step === 'credentials' 
-                ? 'Enter your enterprise credentials to continue.' 
-                : 'Enter the 6-digit code from your authenticator app.'}
+                ? 'Enter your enterprise credentials.' 
+                : 'Enter the 6-digit authenticator code.'}
             </p>
           </div>
 
           {step === 'credentials' ? (
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-1">Work Email</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider ml-0.5">Work Email</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
@@ -83,16 +75,16 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="input-primary pl-10"
+                    className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-ring transition-colors shadow-subtle"
                     placeholder="name@enterprise.com"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <div className="flex items-center justify-between ml-1">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</label>
-                  <Link href="/forgot-password" className="text-xs text-brand-400 hover:text-brand-300">Forgot password?</Link>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between ml-0.5">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Password</label>
+                  <Link href="#" className="text-xs text-muted-foreground hover:text-foreground hover:underline transition-all">Forgot password?</Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -101,7 +93,7 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="input-primary pl-10"
+                    className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-ring transition-colors shadow-subtle"
                     placeholder="••••••••••••"
                   />
                 </div>
@@ -110,10 +102,10 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading || !email || !password}
-                className="btn-primary w-full flex justify-center items-center gap-2 mt-6 py-3"
+                className="btn-primary w-full mt-6 py-2.5"
               >
                 {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                 ) : (
                   <>
                     Continue
@@ -124,17 +116,17 @@ export default function LoginPage() {
             </form>
           ) : (
             <form onSubmit={handleMfa} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-1">Authentication Code</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider ml-0.5">Authentication Code</label>
                 <div className="relative">
-                  <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-400" />
+                  <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
                     required
                     maxLength={6}
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                    className="input-primary pl-10 tracking-[0.5em] text-center text-lg font-mono"
+                    className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-3 text-center tracking-[0.5em] text-lg font-mono text-foreground focus:outline-none focus:border-ring transition-colors shadow-subtle"
                     placeholder="000000"
                     autoFocus
                   />
@@ -144,13 +136,13 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading || mfaCode.length !== 6}
-                className="btn-primary w-full flex justify-center items-center gap-2 mt-6 py-3"
+                className="btn-primary w-full mt-6 py-2.5"
               >
                 {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                 ) : (
                   <>
-                    Verify & Login
+                    Verify Identity
                     <Fingerprint className="w-4 h-4" />
                   </>
                 )}
@@ -159,7 +151,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setStep('credentials')}
-                className="w-full text-sm text-muted-foreground hover:text-foreground mt-4"
+                className="w-full text-xs text-muted-foreground hover:text-foreground mt-4 transition-colors"
               >
                 Back to login
               </button>
@@ -168,8 +160,8 @@ export default function LoginPage() {
 
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          By signing in, you agree to our <Link href="/terms" className="text-foreground hover:underline">Terms of Service</Link> and <Link href="/privacy" className="text-foreground hover:underline">Privacy Policy</Link>.
+        <p className="text-center text-[10px] text-muted-foreground mt-6 uppercase tracking-wider font-semibold">
+          Secured by DocIntel Enterprise
         </p>
       </motion.div>
     </div>
