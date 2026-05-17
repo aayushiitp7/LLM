@@ -36,12 +36,12 @@ const queryLatencyData = [
 ]
 
 const documentTypeData = [
-  { name: 'Contracts', value: 34, color: '#3b5fff' },
-  { name: 'Policies', value: 22, color: '#8b5cf6' },
-  { name: 'Invoices', value: 18, color: '#0ea5e9' },
-  { name: 'Reports', value: 14, color: '#22c55e' },
-  { name: 'HR Docs', value: 8, color: '#f59e0b' },
-  { name: 'Other', value: 4, color: '#6b7280' },
+  { name: 'Contracts', value: 34, color: '#fafafa' },
+  { name: 'Policies', value: 22, color: '#d4d4d8' },
+  { name: 'Invoices', value: 18, color: '#a1a1aa' },
+  { name: 'Reports', value: 14, color: '#71717a' },
+  { name: 'HR Docs', value: 8, color: '#52525b' },
+  { name: 'Other', value: 4, color: '#3f3f46' },
 ]
 
 const ragQualityData = [
@@ -77,7 +77,6 @@ function MetricCard({
   change,
   changePositive,
   icon: Icon,
-  color,
   subvalue,
 }: {
   label: string
@@ -86,30 +85,25 @@ function MetricCard({
   change?: string
   changePositive?: boolean
   icon: React.ElementType
-  color: string
   subvalue?: string
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.3 }}
-      className="stats-card"
+      transition={{ duration: 0.2 }}
+      className="bg-card border border-border p-5 rounded-lg shadow-subtle group cursor-default"
     >
       <div className="flex items-start justify-between mb-4">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: `${color}20`, border: `1px solid ${color}30` }}
-        >
-          <Icon className="w-5 h-5" style={{ color }} />
+        <div className="w-8 h-8 rounded border border-border bg-secondary flex items-center justify-center">
+          <Icon className="w-4 h-4 text-foreground" />
         </div>
         {change && (
           <div
-            className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
+            className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
               changePositive
-                ? 'bg-success/10 text-success'
-                : 'bg-destructive/10 text-destructive'
+                ? 'bg-success/10 text-success border-success/20'
+                : 'bg-danger/10 text-danger border-danger/20'
             }`}
           >
             {changePositive ? (
@@ -123,13 +117,13 @@ function MetricCard({
       </div>
 
       <div className="space-y-1">
-        <div className="text-2xl font-bold font-display text-foreground">
+        <div className="text-2xl font-bold font-mono text-foreground tracking-tight">
           {value}
           {unit && <span className="text-lg text-muted-foreground ml-1">{unit}</span>}
         </div>
-        <div className="text-xs text-muted-foreground font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{label}</div>
         {subvalue && (
-          <div className="text-[10px] text-muted-foreground">{subvalue}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">{subvalue}</div>
         )}
       </div>
     </motion.div>
@@ -142,16 +136,15 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
 
   return (
-    <div
-      className="glass-card rounded-xl px-4 py-3 text-xs"
-      style={{ border: '1px solid rgba(59, 95, 255, 0.15)' }}
-    >
-      <div className="text-muted-foreground mb-2 font-medium">{label}</div>
+    <div className="bg-popover border border-border rounded shadow-modal px-3 py-2 text-xs">
+      <div className="text-muted-foreground mb-2 font-bold uppercase tracking-wider text-[10px]">{label}</div>
       {payload.map((entry: any) => (
-        <div key={entry.name} className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
-          <span className="text-muted-foreground">{entry.name}:</span>
-          <span className="font-semibold text-foreground">{entry.value}</span>
+        <div key={entry.name} className="flex items-center justify-between gap-4 mb-1">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: entry.color }} />
+            <span className="text-muted-foreground">{entry.name}:</span>
+          </div>
+          <span className="font-mono font-bold text-foreground">{entry.value}</span>
         </div>
       ))}
     </div>
@@ -161,57 +154,46 @@ function CustomTooltip({ active, payload, label }: any) {
 // ─── Risk Heatmap ─────────────────────────────────────────────────────────
 
 function RiskHeatmap() {
-  const getIntensity = (value: number, max: number) => {
-    const ratio = value / max
-    if (ratio === 0) return 'bg-surface-200'
-    if (ratio < 0.2) return 'bg-green-900/30'
-    if (ratio < 0.4) return 'bg-yellow-900/40'
-    if (ratio < 0.6) return 'bg-orange-900/40'
-    return 'bg-red-900/50'
-  }
-
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
+    <div className="overflow-x-auto border border-border rounded-lg bg-card">
+      <table className="w-full text-left text-xs">
+        <thead className="bg-secondary/50 text-[10px] uppercase font-bold text-muted-foreground tracking-wider border-b border-border">
           <tr>
-            <th className="text-left pb-3 text-muted-foreground pr-4">Department</th>
+            <th className="px-4 py-3">Department</th>
             {['Low', 'Medium', 'High', 'Critical'].map((level) => (
-              <th key={level} className="text-center pb-3 text-muted-foreground px-2">
-                {level}
-              </th>
+              <th key={level} className="px-4 py-3 text-center">{level}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="space-y-2">
+        <tbody className="divide-y divide-border">
           {riskHeatmapData.map((row, i) => (
             <motion.tr
               key={row.dept}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.2 }}
+              className="hover:bg-secondary/30 transition-colors"
             >
-              <td className="py-2 pr-4 font-medium text-foreground">{row.dept}</td>
+              <td className="px-4 py-3 font-semibold text-foreground">{row.dept}</td>
               {[
                 { val: row.low, max: 100 },
                 { val: row.medium, max: 60 },
                 { val: row.high, max: 25 },
                 { val: row.critical, max: 10 },
               ].map((cell, j) => (
-                <td key={j} className="py-2 px-2 text-center">
+                <td key={j} className="px-4 py-3 text-center">
                   <div
-                    className={`mx-auto w-12 h-8 rounded-md flex items-center justify-center font-semibold transition-all duration-200 hover:scale-110 cursor-default ${
+                    className={`mx-auto w-10 py-1 rounded border text-[10px] font-mono font-bold transition-colors ${
                       cell.val === 0
-                        ? 'bg-surface-200 text-muted-foreground'
+                        ? 'bg-background border-border text-muted-foreground'
                         : j === 0
-                        ? 'bg-green-900/30 text-green-400'
+                        ? 'bg-success/10 border-success/20 text-success'
                         : j === 1
-                        ? 'bg-yellow-900/30 text-yellow-400'
+                        ? 'bg-warning/10 border-warning/20 text-warning'
                         : j === 2
-                        ? 'bg-orange-900/40 text-orange-400'
-                        : 'bg-red-900/50 text-red-400'
+                        ? 'bg-orange-500/10 border-orange-500/20 text-orange-500'
+                        : 'bg-danger/10 border-danger/20 text-danger'
                     }`}
-                    title={`${cell.val} documents`}
                   >
                     {cell.val}
                   </div>
@@ -230,8 +212,8 @@ function RiskHeatmap() {
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-6">
-      <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+      <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">{title}</h2>
+      {subtitle && <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-bold">{subtitle}</p>}
     </div>
   )
 }
@@ -242,43 +224,47 @@ export default function AnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('7d')
 
   return (
-    <div className="p-6 space-y-8 overflow-y-auto h-full">
+    <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6"
+      >
         <div>
-          <h1 className="text-xl font-bold font-display text-foreground">Analytics Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Analytics Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Real-time platform metrics and AI quality indicators
           </p>
         </div>
 
-        <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+        <div className="flex gap-1 p-1 rounded bg-secondary border border-border">
           {(['7d', '30d', '90d'] as const).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
-              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+              className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
                 timeRange === range
-                  ? 'bg-brand-600 text-white shadow-glow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-subtle'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background'
               }`}
             >
               {range}
             </button>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="Documents Processed"
           value="24,891"
           change="+12.3%"
           changePositive
           icon={FileText}
-          color="#3b5fff"
           subvalue="vs. last period"
         />
         <MetricCard
@@ -287,7 +273,6 @@ export default function AnalyticsDashboard() {
           change="+8.7%"
           changePositive
           icon={MessageSquare}
-          color="#8b5cf6"
           subvalue="Avg 4 per active user"
         />
         <MetricCard
@@ -297,7 +282,6 @@ export default function AnalyticsDashboard() {
           change="-15.2%"
           changePositive
           icon={Clock}
-          color="#22c55e"
           subvalue="P95: 920ms"
         />
         <MetricCard
@@ -306,111 +290,83 @@ export default function AnalyticsDashboard() {
           change="+2.1%"
           changePositive
           icon={Shield}
-          color="#f59e0b"
           subvalue="Hallucination rate: 2.1%"
         />
       </div>
 
       {/* Row 2: Upload Volume + RAG Quality */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Upload Volume Chart */}
-        <div className="glass-card rounded-2xl p-6">
+        <div className="bg-card border border-border rounded-lg p-5">
           <SectionHeader
             title="Document Processing Volume"
             subtitle="Uploads → OCR → Indexed pipeline"
           />
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={uploadVolumeData}>
-              <defs>
-                <linearGradient id="uploadsGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b5fff" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3b5fff" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="indexedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} dy={10} />
+              <YAxis tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} dx={-10} />
               <Tooltip content={<CustomTooltip />} />
               <Area
                 type="monotone"
                 dataKey="uploads"
                 name="Uploads"
-                stroke="#3b5fff"
-                strokeWidth={2}
-                fill="url(#uploadsGrad)"
+                stroke="#fafafa"
+                strokeWidth={1.5}
+                fillOpacity={0.1}
+                fill="#fafafa"
               />
               <Area
                 type="monotone"
                 dataKey="indexed"
                 name="Indexed"
-                stroke="#22c55e"
-                strokeWidth={2}
-                fill="url(#indexedGrad)"
+                stroke="#52525b"
+                strokeWidth={1.5}
+                fillOpacity={0.1}
+                fill="#52525b"
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* RAG Quality Metrics */}
-        <div className="glass-card rounded-2xl p-6">
+        <div className="bg-card border border-border rounded-lg p-5">
           <SectionHeader
             title="RAG Quality Metrics"
             subtitle="Weekly faithfulness, relevancy, and precision"
           />
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={250}>
             <LineChart data={ragQualityData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
-              <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+              <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} dy={10} />
               <YAxis
-                tick={{ fontSize: 10, fill: '#6b7280' }}
+                tick={{ fontSize: 10, fill: '#a1a1aa' }}
                 axisLine={false}
+                tickLine={false}
                 domain={[0.7, 1.0]}
                 tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                dx={-10}
               />
               <Tooltip
                 content={<CustomTooltip />}
                 formatter={(v: number) => `${(v * 100).toFixed(1)}%`}
               />
-              <Legend iconType="circle" iconSize={6} />
-              <Line
-                type="monotone"
-                dataKey="faithfulness"
-                name="Faithfulness"
-                stroke="#3b5fff"
-                strokeWidth={2}
-                dot={{ fill: '#3b5fff', r: 3 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="relevancy"
-                name="Relevancy"
-                stroke="#8b5cf6"
-                strokeWidth={2}
-                dot={{ fill: '#8b5cf6', r: 3 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="precision"
-                name="Precision"
-                stroke="#22c55e"
-                strokeWidth={2}
-                dot={{ fill: '#22c55e', r: 3 }}
-              />
+              <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', color: '#a1a1aa' }} />
+              <Line type="monotone" dataKey="faithfulness" name="Faithfulness" stroke="#fafafa" strokeWidth={1.5} dot={{ fill: '#fafafa', r: 3 }} />
+              <Line type="monotone" dataKey="relevancy" name="Relevancy" stroke="#a1a1aa" strokeWidth={1.5} dot={{ fill: '#a1a1aa', r: 3 }} />
+              <Line type="monotone" dataKey="precision" name="Precision" stroke="#52525b" strokeWidth={1.5} dot={{ fill: '#52525b', r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Row 3: Risk Heatmap + Document Types */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Risk Heatmap */}
-        <div className="glass-card rounded-2xl p-6 lg:col-span-2">
+        <div className="bg-card border border-border rounded-lg p-5 lg:col-span-2">
           <SectionHeader
             title="Risk Distribution Heatmap"
             subtitle="Document risk levels by department"
@@ -419,47 +375,41 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* Document Type Breakdown */}
-        <div className="glass-card rounded-2xl p-6">
+        <div className="bg-card border border-border rounded-lg p-5">
           <SectionHeader
             title="Document Types"
             subtitle="By category"
           />
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie
-                data={documentTypeData}
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={3}
-                dataKey="value"
-              >
-                {documentTypeData.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                content={({ payload }) =>
-                  payload?.[0] ? (
-                    <div className="glass-card rounded-lg px-3 py-2 text-xs">
-                      <span className="text-foreground font-semibold">{payload[0].name}:</span>
-                      <span className="text-muted-foreground ml-1">{payload[0].value}%</span>
-                    </div>
-                  ) : null
-                }
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="h-[200px] flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={documentTypeData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={2}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {documentTypeData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
-          <div className="space-y-2 mt-2">
+          <div className="grid grid-cols-2 gap-2 mt-4">
             {documentTypeData.map((item) => (
-              <div key={item.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-                  <span className="text-muted-foreground">{item.name}</span>
+              <div key={item.name} className="flex items-center justify-between px-2 py-1 bg-background border border-border rounded">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: item.color }} />
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{item.name}</span>
                 </div>
-                <span className="text-foreground font-semibold">{item.value}%</span>
+                <span className="text-xs font-mono font-bold text-foreground">{item.value}%</span>
               </div>
             ))}
           </div>
@@ -467,42 +417,42 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* Row 4: Token Usage + Latency */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* LLM Token Usage */}
-        <div className="glass-card rounded-2xl p-6">
+        <div className="bg-card border border-border rounded-lg p-5">
           <SectionHeader
             title="LLM Token Usage & Cost"
             subtitle="By provider this month"
           />
-          <div className="space-y-3">
+          <div className="space-y-4">
             {tokenUsageData.map((provider, i) => (
               <motion.div
                 key={provider.provider}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-4"
+                transition={{ delay: i * 0.1, duration: 0.2 }}
+                className="flex items-center gap-4 group"
               >
-                <div className="w-24 text-xs font-medium text-foreground flex-shrink-0">
+                <div className="w-24 text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0">
                   {provider.provider}
                 </div>
                 <div className="flex-1">
-                  <div className="progress-bar">
+                  <div className="h-1.5 w-full bg-background border border-border rounded-full overflow-hidden">
                     <div
-                      className="progress-bar-fill"
+                      className="h-full bg-foreground transition-all duration-1000"
                       style={{
                         width: `${(provider.tokens / 4200000) * 100}%`,
-                        background: i === 0 ? '#3b5fff' : i === 1 ? '#8b5cf6' : i === 2 ? '#0ea5e9' : '#22c55e',
+                        background: i === 0 ? '#fafafa' : i === 1 ? '#a1a1aa' : i === 2 ? '#52525b' : '#3f3f46',
                       }}
                     />
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="text-xs font-semibold text-foreground">
+                <div className="text-right flex-shrink-0 w-20">
+                  <div className="text-xs font-mono font-bold text-foreground">
                     {(provider.tokens / 1000000).toFixed(1)}M
                   </div>
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-[10px] text-muted-foreground font-mono">
                     ${provider.cost.toFixed(2)}
                   </div>
                 </div>
@@ -512,19 +462,19 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* Query Latency Distribution */}
-        <div className="glass-card rounded-2xl p-6">
+        <div className="bg-card border border-border rounded-lg p-5">
           <SectionHeader
             title="Query Latency Distribution"
             subtitle="Retrieval + Generation breakdown (ms)"
           />
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={queryLatencyData} stackOffset="none">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
-              <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+              <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} dy={10} />
+              <YAxis tick={{ fontSize: 10, fill: '#a1a1aa' }} axisLine={false} tickLine={false} dx={-10} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="retrieval" name="Retrieval" stackId="a" fill="#3b5fff" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="generation" name="Generation" stackId="a" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="retrieval" name="Retrieval" stackId="a" fill="#52525b" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="generation" name="Generation" stackId="a" fill="#fafafa" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
