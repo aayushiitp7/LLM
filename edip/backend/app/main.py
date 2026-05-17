@@ -86,23 +86,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_db()
     logger.info("edip.database.ready")
 
-    # Auto-seed Kaggle data if empty
-    try:
-        from app.models.document import Document
-        doc_count = await Document.find().count()
-        if doc_count == 0:
-            logger.info("edip.database.seeding", msg="Database is empty. Seeding Kaggle/HuggingFace dataset...")
-            import sys
-            import os
-            sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-            try:
-                from scripts.seed_real_data import main as seed_main
-                await seed_main()
-                logger.info("edip.database.seeded")
-            except Exception as e:
-                logger.error("edip.database.seed_failed", error=str(e))
-    except Exception as e:
-        logger.error("edip.database.seed_check_failed", error=str(e))
+    # Auto-seed Kaggle data if empty (SKIP on Vercel to prevent 504 timeouts)
+    import os
+    if not os.environ.get("VERCEL"):
+        try:
+            from app.models.document import Document
+            doc_count = await Document.find().count()
+            if doc_count == 0:
+                logger.info("edip.database.seeding", msg="Database is empty. Seeding Kaggle/HuggingFace dataset...")
+                import sys
+                sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+                try:
+                    from scripts.seed_real_data import main as seed_main
+                    await seed_main()
+                    logger.info("edip.database.seeded")
+                except Exception as e:
+                    logger.error("edip.database.seed_failed", error=str(e))
+        except Exception as e:
+            logger.error("edip.database.seed_check_failed", error=str(e))
+    else:
+        logger.info("edip.database.seeding_skipped", msg="Running on Vercel Serverless. Auto-seeding disabled to prevent timeout.")
 
     # Configure telemetry
     if settings.APP_ENV != "test":
