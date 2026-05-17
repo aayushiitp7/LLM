@@ -100,9 +100,9 @@ export default function RootLayout({
                 toastOptions={{
                   duration: 4000,
                   style: {
-                    background: 'hsl(228, 28%, 10%)',
-                    color: 'hsl(220, 15%, 93%)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'hsl(240, 10%, 3.9%)',
+                    color: 'hsl(0, 0%, 98%)',
+                    border: '1px solid hsl(240, 3.7%, 15.9%)',
                     borderRadius: '12px',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
                     fontSize: '14px',

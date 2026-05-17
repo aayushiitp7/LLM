@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Sparkles, Filter, FileText, Calendar, Layers, ArrowRight } from 'lucide-react'
+import { Search, Filter, FileText, Layers, ArrowRight } from 'lucide-react'
 
 const MOCK_RESULTS = [
   { id: 1, title: 'Q3 Financial Projections', type: 'Spreadsheet', relevance: 0.98, text: '...indicates a 14.5% YoY growth projection ($45.2M total) driven by strong renewal rates in the EMEA region...' },
@@ -22,29 +22,31 @@ export default function SearchPage() {
     setTimeout(() => {
       setIsSearching(false)
       setHasSearched(true)
-    }, 800)
+    }, 400) // Faster perception of speed
   }
 
   return (
     <div className="h-full flex flex-col p-6 md:p-8 max-w-[1200px] mx-auto">
       
-      {/* Search Header Container - Centered initially, transitions up when searched */}
+      {/* Search Header Container */}
       <motion.div 
         layout
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, type: 'spring', bounce: 0.2 }}
-        className={`w-full ${hasSearched ? 'mb-8' : 'flex-1 flex flex-col justify-center items-center pb-[20vh]'}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, type: 'tween' }}
+        className={`w-full ${hasSearched ? 'mb-6' : 'flex-1 flex flex-col justify-center items-center pb-[20vh]'}`}
       >
-        <motion.div layout className={`text-center w-full ${hasSearched ? 'text-left flex items-end justify-between' : 'mb-8'}`}>
+        <motion.div layout className={`text-center w-full ${hasSearched ? 'text-left flex items-end justify-between' : 'mb-6'}`}>
           <div>
-            <h1 className="text-4xl font-display font-bold text-foreground tracking-tight flex items-center justify-center sm:justify-start gap-3">
-              <Sparkles className={`text-brand-400 ${hasSearched ? 'w-6 h-6' : 'w-8 h-8'}`} />
+            <h1 className="text-3xl font-semibold text-foreground tracking-tight flex items-center justify-center sm:justify-start gap-2">
+              <Search className={`text-foreground ${hasSearched ? 'w-5 h-5' : 'w-6 h-6'}`} />
               Semantic Search
             </h1>
-            <p className="text-muted-foreground mt-3 text-lg max-w-xl mx-auto sm:mx-0">
-              Instantly find insights, context, and exact passages across millions of enterprise documents.
-            </p>
+            {!hasSearched && (
+              <p className="text-muted-foreground mt-2 text-sm max-w-xl mx-auto sm:mx-0">
+                Execute natural language queries across the global document index.
+              </p>
+            )}
           </div>
         </motion.div>
 
@@ -55,23 +57,23 @@ export default function SearchPage() {
         >
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             {isSearching ? (
-              <div className="w-6 h-6 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+              <div className="w-4 h-4 rounded-full border-2 border-foreground border-t-transparent animate-spin" />
             ) : (
-              <Search className="w-6 h-6 text-muted-foreground" />
+              <Search className="w-4 h-4 text-muted-foreground" />
             )}
           </div>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for 'Q3 revenue projections' or 'HR policies'..."
-            className="w-full h-16 bg-surface-200/80 backdrop-blur-xl border border-white/10 rounded-2xl pl-14 pr-6 text-lg text-foreground shadow-2xl focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all placeholder:text-muted-foreground/70"
+            placeholder="Search for 'Q3 revenue projections'..."
+            className="w-full bg-background border border-border rounded-md pl-11 pr-24 py-3 text-sm text-foreground shadow-subtle focus:outline-none focus:border-ring transition-colors placeholder:text-muted-foreground"
           />
           <button 
             type="button"
-            className="absolute inset-y-2 right-2 px-4 rounded-xl bg-surface-100 hover:bg-white/10 border border-white/5 text-sm font-medium text-foreground transition-colors flex items-center gap-2"
+            className="absolute inset-y-1.5 right-1.5 px-3 rounded bg-secondary hover:bg-muted border border-border text-[10px] uppercase font-bold text-foreground transition-colors flex items-center gap-1.5 tracking-wider"
           >
-            <Filter className="w-4 h-4" /> Filters
+            <Filter className="w-3 h-3" /> Filter
           </button>
         </motion.form>
 
@@ -80,15 +82,15 @@ export default function SearchPage() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-2 mt-6 max-w-2xl mx-auto"
+            transition={{ delay: 0.1 }}
+            className="flex flex-wrap justify-center gap-2 mt-4 max-w-2xl mx-auto"
           >
-            <span className="text-xs font-medium text-muted-foreground mr-2 self-center">Try asking:</span>
-            {['"Data center expansion costs"', '"Renewals in EMEA"', '"Vacation policy update"'].map((suggestion) => (
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mr-2 self-center">Examples:</span>
+            {['"Data center costs"', '"EMEA Renewals"', '"Vacation policy"'].map((suggestion) => (
               <button 
                 key={suggestion}
                 onClick={() => { setQuery(suggestion.replace(/"/g, '')); setHasSearched(true) }}
-                className="px-3 py-1.5 rounded-full bg-surface-100 border border-white/5 text-xs text-muted-foreground hover:text-foreground hover:border-brand-500/50 transition-colors"
+                className="px-2.5 py-1 rounded bg-background border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
                 {suggestion}
               </button>
@@ -102,57 +104,55 @@ export default function SearchPage() {
         {hasSearched && (
           <motion.div 
             key="search-results"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0"
           >
             
             {/* Search Results List */}
-            <div className="flex-1 flex flex-col overflow-y-auto pr-4 pb-12 space-y-4 scroll-smooth">
-              <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                <span className="text-sm font-medium text-muted-foreground">Found {MOCK_RESULTS.length} highly relevant passages</span>
-                <span className="text-xs text-muted-foreground">Search took 0.42s</span>
+            <div className="flex-1 flex flex-col overflow-y-auto pr-2 pb-12 space-y-4 scroll-smooth">
+              <div className="flex items-center justify-between pb-2 border-b border-border">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Found {MOCK_RESULTS.length} matches</span>
+                <span className="text-[10px] font-mono text-muted-foreground">0.42s</span>
               </div>
               
               {MOCK_RESULTS.map((result, idx) => (
                 <motion.div 
                   key={result.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="p-5 rounded-xl bg-surface-200 border border-white/5 hover:border-brand-500/50 hover:bg-surface-100 transition-all group cursor-pointer shadow-card"
+                  transition={{ delay: idx * 0.05 }}
+                  className="p-4 rounded-lg bg-card border border-border hover:border-muted-foreground/30 transition-colors group cursor-pointer shadow-subtle"
                 >
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center shrink-0">
-                        <FileText className="w-4 h-4 text-brand-400" />
+                      <div className="w-6 h-6 rounded bg-secondary border border-border flex items-center justify-center shrink-0">
+                        <FileText className="w-3.5 h-3.5 text-foreground" />
                       </div>
                       <div>
-                        <h3 className="text-base font-semibold text-foreground group-hover:text-brand-400 transition-colors">
+                        <h3 className="text-sm font-semibold text-foreground group-hover:underline underline-offset-2 decoration-muted-foreground">
                           {result.title}
                         </h3>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1"><Layers className="w-3 h-3" /> {result.type}</span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> Updated 2d ago</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-wider font-semibold"><Layers className="w-3 h-3" /> {result.type}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="px-2 py-1 rounded bg-success/10 border border-success/20 text-success text-xs font-mono font-medium">
+                    <div className="px-1.5 py-0.5 rounded bg-success/10 border border-success/20 text-success text-[10px] font-mono font-bold">
                       {(result.relevance * 100).toFixed(1)}% Match
                     </div>
                   </div>
                   
-                  <div className="p-3 rounded-lg bg-surface-300 border border-white/5 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-brand-500/50" />
-                    <p className="text-sm text-foreground/90 leading-relaxed italic">
-                      "{result.text}"
+                  <div className="p-3 rounded bg-background border border-border relative">
+                    <p className="text-xs text-foreground leading-relaxed">
+                      {result.text}
                     </p>
                   </div>
                   
-                  <div className="mt-4 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-xs text-brand-400 font-medium flex items-center gap-1">
-                      View in Context <ArrowRight className="w-3 h-3" />
+                  <div className="mt-3 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] text-foreground font-bold uppercase tracking-wider flex items-center gap-1">
+                      View Context <ArrowRight className="w-3 h-3" />
                     </span>
                   </div>
                 </motion.div>
@@ -160,43 +160,41 @@ export default function SearchPage() {
             </div>
 
             {/* Smart Filters Panel */}
-            <div className="hidden lg:block w-72 shrink-0">
-              <div className="sticky top-0 bg-surface-200 border border-white/5 rounded-xl p-5 shadow-card">
-                <h3 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-muted-foreground" />
-                  Smart Filters
+            <div className="hidden lg:block w-64 shrink-0">
+              <div className="sticky top-0 bg-card border border-border rounded-lg p-4 shadow-subtle">
+                <h3 className="text-[10px] font-bold text-muted-foreground mb-4 uppercase tracking-wider flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-foreground" />
+                  Parameters
                 </h3>
                 
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">Document Type</h4>
-                    <div className="space-y-2">
+                    <h4 className="text-[10px] font-bold text-foreground mb-2 uppercase tracking-wider">Document Type</h4>
+                    <div className="space-y-1.5">
                       {['All Types', 'PDF Documents', 'Spreadsheets', 'Presentations'].map((type, i) => (
-                        <label key={i} className="flex items-center gap-2 text-sm text-foreground cursor-pointer group">
-                          <input type="checkbox" defaultChecked={i===0} className="rounded border-white/10 bg-surface-300 text-brand-500 focus:ring-brand-500" />
-                          <span className="group-hover:text-brand-400 transition-colors">{type}</span>
+                        <label key={i} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                          <input type="checkbox" defaultChecked={i===0} className="rounded border-border bg-background text-primary focus:ring-ring" />
+                          <span>{type}</span>
                         </label>
                       ))}
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">Date Range</h4>
-                    <select className="w-full bg-surface-300 border border-white/10 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-brand-500">
+                    <h4 className="text-[10px] font-bold text-foreground mb-2 uppercase tracking-wider">Date Range</h4>
+                    <select className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-ring">
                       <option>Any time</option>
                       <option>Past 24 hours</option>
                       <option>Past week</option>
-                      <option>Past month</option>
-                      <option>Past year</option>
                     </select>
                   </div>
                   
                   <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">Confidence Score</h4>
-                    <input type="range" className="w-full accent-brand-500" />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>Low</span>
-                      <span>High</span>
+                    <h4 className="text-[10px] font-bold text-foreground mb-2 uppercase tracking-wider">Min Confidence</h4>
+                    <input type="range" className="w-full accent-foreground" />
+                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1 font-mono">
+                      <span>0.0</span>
+                      <span>1.0</span>
                     </div>
                   </div>
                 </div>
