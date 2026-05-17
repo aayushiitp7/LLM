@@ -1,0 +1,11 @@
+# Node modules and build artifacts
+edip/frontend/node_modules/
+edip/frontend/.next/
+edip/backend/.venv/
+edip/backend/__pycache__/
+edip/backend/api/__pycache__/
+edip/backend/app/__pycache__/
+edip/services/*/node_modules/
+edip/services/*/.venv/
+*.pyc
+*.pyo
