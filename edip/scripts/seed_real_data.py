@@ -23,11 +23,9 @@ async def main():
     client = AsyncIOMotorClient(settings.MONGODB_URL, uuidRepresentation="standard")
     database = client[settings.MONGODB_DATABASE_NAME]
     
-    await init_beanie(
-        database=database,
-        document_models=[Tenant, User, Document, DocumentChunk]
-    )
-    
+    # If beanie is already initialized (e.g. from FastAPI lifespan), this is safe
+    # We just proceed.
+
     # 1. Create Tenant and User
     tenant = Tenant(name="Enterprise Corp", slug="enterprise")
     await tenant.insert()

@@ -30,7 +30,6 @@ from fastapi.responses import JSONResponse
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -86,6 +85,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialize database connection pool
     await init_db()
     logger.info("edip.database.ready")
+
+    # Auto-seed Kaggle data if empty
+    try:
+        from app.models.document import Document
+        doc_count = await Document.find().count()
+        if doc_count == 0:
+            logger.info("edip.database.seeding", msg="Database is empty. Seeding Kaggle/HuggingFace dataset...")
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
+            try:
+                from scripts.seed_real_data import main as seed_main
+                await seed_main()
+                logger.info("edip.database.seeded")
+            except Exception as e:
+                logger.error("edip.database.seed_failed", error=str(e))
+    except Exception as e:
+        logger.error("edip.database.seed_check_failed", error=str(e))
 
     # Configure telemetry
     if settings.APP_ENV != "test":
@@ -278,7 +295,6 @@ Obtain a token via `POST /api/v1/auth/login`.
     # ── OpenTelemetry FastAPI Instrumentation ─────────────────────────────
     if settings.APP_ENV != "test":
         FastAPIInstrumentor.instrument_app(app)
-        SQLAlchemyInstrumentor().instrument()
 
     return app
 
