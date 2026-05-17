@@ -1,209 +1,231 @@
 'use client'
 
-import { useState } from 'react'
+import React from 'react'
 import { motion } from 'framer-motion'
 import { 
-  FileText, MessageSquare, AlertTriangle, Clock, 
-  TrendingUp, ArrowRight, ShieldCheck, Zap
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  BarChart, Bar, PieChart, Pie, Cell 
+} from 'recharts'
+import { 
+  Activity, ArrowUpRight, ArrowDownRight, 
+  Files, Users, BrainCircuit, Clock, CheckCircle2 
 } from 'lucide-react'
-import Link from 'next/link'
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts'
 
-const activityData = [
-  { time: '08:00', queries: 12 },
-  { time: '10:00', queries: 45 },
-  { time: '12:00', queries: 32 },
-  { time: '14:00', queries: 68 },
-  { time: '16:00', queries: 85 },
-  { time: '18:00', queries: 41 },
-  { time: '20:00', queries: 15 },
+// --- Mock Data ---
+const usageData = [
+  { name: 'Mon', queries: 4000, documents: 2400 },
+  { name: 'Tue', queries: 3000, documents: 1398 },
+  { name: 'Wed', queries: 2000, documents: 9800 },
+  { name: 'Thu', queries: 2780, documents: 3908 },
+  { name: 'Fri', queries: 1890, documents: 4800 },
+  { name: 'Sat', queries: 2390, documents: 3800 },
+  { name: 'Sun', queries: 3490, documents: 4300 },
 ]
 
-export default function DashboardOverview() {
+const pieData = [
+  { name: 'Financial', value: 400 },
+  { name: 'Legal', value: 300 },
+  { name: 'HR', value: 300 },
+  { name: 'Technical', value: 200 },
+]
+
+const COLORS = ['#3b5fff', '#8b5cf6', '#10b981', '#f59e0b']
+
+const recentActivity = [
+  { id: 1, action: 'Document Indexed', target: 'Q3_Financial_Report.pdf', time: '2m ago', user: 'System' },
+  { id: 2, action: 'Query Executed', target: 'Semantic Search: "Revenue projections"', time: '15m ago', user: 'Alice Chen' },
+  { id: 3, action: 'User Invited', target: 'robert.smith@enterprise.com', time: '1h ago', user: 'Admin' },
+  { id: 4, action: 'Model Updated', target: 'GPT-4o fine-tuning complete', time: '2h ago', user: 'System' },
+]
+
+// --- Animation Variants ---
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+}
+
+export default function DashboardPage() {
   return (
-    <div className="p-6 max-w-7xl mx-auto h-full space-y-8">
-      
-      {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+      >
         <div>
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 text-brand-400 mb-2"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span className="text-xs font-bold tracking-wider uppercase">Enterprise Secure Mode</span>
-          </motion.div>
-          <motion.h1 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-3xl font-bold font-display text-foreground"
-          >
-            Welcome back, John.
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-muted-foreground mt-1"
-          >
-            Here is what's happening across your document intelligence platform today.
-          </motion.p>
+          <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Overview</h1>
+          <p className="text-muted-foreground mt-1">Platform metrics and AI intelligence activity.</p>
         </div>
-        
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex gap-3"
-        >
-          <Link href="/documents" className="btn-ghost glass-card">
-            <FileText className="w-4 h-4 mr-2 inline" />
-            Upload
-          </Link>
-          <Link href="/chat" className="btn-primary flex items-center gap-2">
-            <MessageSquare className="w-4 h-4" />
-            New Chat
-          </Link>
-        </motion.div>
-      </div>
+        <div className="flex items-center gap-3">
+          <button className="btn-secondary">Export Report</button>
+          <button className="btn-primary">New Query</button>
+        </div>
+      </motion.div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="stats-card">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/20 border border-brand-500/30 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-brand-400" />
+      {/* Top Metrics Cards */}
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+      >
+        {[
+          { label: 'Total Documents', value: '124,592', change: '+12.5%', isUp: true, icon: Files, color: 'text-brand-400' },
+          { label: 'AI Queries (7d)', value: '32.4k', change: '+24.1%', isUp: true, icon: BrainCircuit, color: 'text-purple-400' },
+          { label: 'Active Users', value: '1,429', change: '-2.4%', isUp: false, icon: Users, color: 'text-emerald-400' },
+          { label: 'Avg Processing Time', value: '0.4s', change: '-12%', isUp: true, icon: Clock, color: 'text-amber-400' },
+        ].map((stat, i) => (
+          <motion.div key={i} variants={item} className="premium-card p-6 group cursor-default">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{stat.label}</span>
+              <stat.icon className={`w-5 h-5 ${stat.color} opacity-80 group-hover:opacity-100 transition-opacity`} />
             </div>
-            <span className="badge-green">+12 today</span>
-          </div>
-          <div className="text-2xl font-bold text-foreground">24,891</div>
-          <div className="text-sm text-muted-foreground">Total Documents</div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="stats-card">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-purple-400" />
+            <div className="mt-4 flex items-baseline gap-4">
+              <span className="text-3xl font-display font-bold text-foreground">{stat.value}</span>
+              <span className={`flex items-center text-sm font-medium ${stat.isUp ? 'text-success' : 'text-destructive'}`}>
+                {stat.isUp ? <ArrowUpRight className="w-4 h-4 mr-0.5" /> : <ArrowDownRight className="w-4 h-4 mr-0.5" />}
+                {stat.change}
+              </span>
             </div>
-            <span className="badge-green">+85 today</span>
-          </div>
-          <div className="text-2xl font-bold text-foreground">1,247</div>
-          <div className="text-sm text-muted-foreground">AI Queries</div>
-        </motion.div>
+          </motion.div>
+        ))}
+      </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="stats-card">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-green-400" />
+      {/* Charts Section */}
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+      >
+        {/* Main Area Chart */}
+        <motion.div variants={item} className="premium-card p-6 lg:col-span-2 flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Usage Analytics</h2>
+              <p className="text-sm text-muted-foreground">Queries vs Document Processing</p>
             </div>
-            <span className="text-success text-xs font-bold">+2.1%</span>
+            <select className="bg-surface-100 border border-white/10 text-sm rounded-md px-3 py-1.5 outline-none focus:border-brand-500">
+              <option>Last 7 days</option>
+              <option>Last 30 days</option>
+            </select>
           </div>
-          <div className="text-2xl font-bold text-foreground">94.3%</div>
-          <div className="text-sm text-muted-foreground">RAG Faithfulness</div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="stats-card">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-orange-400" />
-            </div>
-            <span className="badge-red">Requires Action</span>
-          </div>
-          <div className="text-2xl font-bold text-foreground">3</div>
-          <div className="text-sm text-muted-foreground">Compliance Risks</div>
-        </motion.div>
-      </div>
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Activity Chart */}
-        <div className="lg:col-span-2 glass-card rounded-2xl p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-semibold text-foreground">Platform Activity (Today)</h3>
-            <button className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
-              View Analytics <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="h-[200px]">
+          <div className="flex-1 min-h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={activityData}>
+              <AreaChart data={usageData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorQueries" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b5fff" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#3b5fff" stopOpacity={0}/>
                   </linearGradient>
+                  <linearGradient id="colorDocs" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                  </linearGradient>
                 </defs>
-                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'rgba(15, 17, 32, 0.9)', border: '1px solid rgba(59,95,255,0.2)', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: '#141627', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
                   itemStyle={{ color: '#fff' }}
                 />
-                <Area type="monotone" dataKey="queries" stroke="#3b5fff" strokeWidth={3} fillOpacity={1} fill="url(#colorQueries)" />
+                <Area type="monotone" dataKey="queries" stroke="#3b5fff" strokeWidth={2} fillOpacity={1} fill="url(#colorQueries)" />
+                <Area type="monotone" dataKey="documents" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorDocs)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Recent Alerts */}
-        <div className="glass-card rounded-2xl p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-semibold text-foreground">Risk Alerts</h3>
-            <span className="badge-red">3 New</span>
+        {/* Pie Chart */}
+        <motion.div variants={item} className="premium-card p-6 flex flex-col">
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-foreground">Document Categories</h2>
+            <p className="text-sm text-muted-foreground">Distribution by department</p>
           </div>
-          
-          <div className="space-y-4">
-            <div className="p-3 rounded-xl bg-black/20 border border-white/5 hover:border-orange-500/30 transition-colors cursor-pointer">
-              <div className="flex gap-3">
-                <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0" />
-                <div>
-                  <div className="text-sm font-semibold text-foreground">Missing Indemnification</div>
-                  <div className="text-xs text-muted-foreground mt-1">Vendor Contract - TechFlow.pdf deviates from standard policy.</div>
-                  <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> 2 hours ago
-                  </div>
+          <div className="flex-1 flex flex-col justify-center relative min-h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#141627', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Custom Legend */}
+            <div className="grid grid-cols-2 gap-x-2 gap-y-3 mt-4">
+              {pieData.map((entry, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                  <span className="text-xs text-muted-foreground truncate">{entry.name}</span>
                 </div>
-              </div>
+              ))}
             </div>
-            
-            <div className="p-3 rounded-xl bg-black/20 border border-white/5 hover:border-red-500/30 transition-colors cursor-pointer">
-              <div className="flex gap-3">
-                <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0" />
-                <div>
-                  <div className="text-sm font-semibold text-foreground">PII Exposure Detected</div>
-                  <div className="text-xs text-muted-foreground mt-1">Found unmasked SSN in HR Onboarding file. Automatic mask applied.</div>
-                  <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> 5 hours ago
-                  </div>
-                </div>
-              </div>
-            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Activity Stream */}
+      <motion.div 
+        variants={item}
+        initial="hidden"
+        animate="show"
+        className="premium-card overflow-hidden"
+      >
+        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Live Activity Stream</h2>
+            <p className="text-sm text-muted-foreground">Real-time system events</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-brand-400 font-medium px-2 py-1 bg-brand-500/10 rounded-full border border-brand-500/20">
+            <div className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+            Live
           </div>
         </div>
-      </div>
+        <div className="divide-y divide-white/5">
+          {recentActivity.map((activity) => (
+            <div key={activity.id} className="p-4 sm:p-6 flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer group">
+              <div className="w-10 h-10 rounded-full bg-surface-100 border border-white/5 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Activity className="w-4 h-4 text-brand-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm font-medium text-foreground truncate">{activity.action}</p>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">{activity.time}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-sm text-muted-foreground truncate">{activity.target}</p>
+                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-surface-100 text-muted-foreground border border-white/5">
+                    {activity.user}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
     </div>
-  )
-}
-
-function ShieldAlert(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m12 22-5.5-3.5L5 6l7-4 7 4-1.5 12.5L12 22" />
-      <path d="M12 8v4" />
-      <path d="M12 16h.01" />
-    </svg>
   )
 }

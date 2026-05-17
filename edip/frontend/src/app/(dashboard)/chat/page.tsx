@@ -1,673 +1,218 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Send,
-  Bot,
-  User,
-  FileText,
-  ChevronDown,
-  ThumbsUp,
-  ThumbsDown,
-  Copy,
-  RefreshCw,
-  Sparkles,
-  BookOpen,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Zap,
-  MessageSquare,
-  Plus,
-  Settings,
-  Search,
-  X,
-} from 'lucide-react'
+import { Send, Bot, User, Sparkles, FileText, ChevronRight, X, ExternalLink, ShieldCheck } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
-// ─── Types ────────────────────────────────────────────────────────────────
+// --- Mock Data ---
+const MOCK_CHAT = [
+  { 
+    id: 1, 
+    role: 'user', 
+    content: 'What were our revenue projections for Q3 based on the latest financial models?' 
+  },
+  { 
+    id: 2, 
+    role: 'assistant', 
+    content: 'Based on the latest financial models, our Q3 revenue projections indicate a **14.5% year-over-year increase**, reaching approximately $45.2M. \n\nThis growth is primarily driven by the expansion of our enterprise SaaS segment and increased renewals in the EMEA region [[1]](#). However, the operational costs are also projected to rise by 4.2% due to data center expansions [[2]](#).\n\nWould you like a breakdown of the specific product lines driving this revenue?',
+    sources: [
+      { id: '1', title: 'Q3_Financial_Projections_v4.xlsx', confidence: 0.94, snippet: 'EMEA region shows strong renewal rates at 92%, contributing to the 14.5% YoY growth projection ($45.2M total).' },
+      { id: '2', title: 'Data_Center_Expansion_Budget.pdf', confidence: 0.88, snippet: 'Total operational costs (OpEx) for Q3 will increase by an estimated 4.2% to cover the new Frankfurt data center rollout.' }
+    ]
+  }
+]
 
-interface Citation {
-  chunk_id: string
-  document_id: string
-  document_title: string
-  filename: string
-  page_number?: number
-  section?: string
-  relevance_score: number
-  content_snippet: string
-}
+export default function ChatPage() {
+  const [messages, setMessages] = useState(MOCK_CHAT)
+  const [input, setInput] = useState('')
+  const [activeSource, setActiveSource] = useState<any | null>(null)
 
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  citations?: Citation[]
-  confidence_score?: number
-  answer_refused?: boolean
-  refusal_reason?: string
-  tokens_used?: number
-  latency_ms?: number
-  timestamp: Date
-  streaming?: boolean
-}
-
-// ─── Citation Tooltip ─────────────────────────────────────────────────────
-
-function CitationTooltip({
-  citation,
-  index,
-}: {
-  citation: Citation
-  index: number
-}) {
-  const [open, setOpen] = useState(false)
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim()) return
+    
+    const newMsg = { id: Date.now(), role: 'user', content: input }
+    setMessages([...messages, newMsg])
+    setInput('')
+    
+    // Simulate AI response
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: 'I am currently operating in a simulated environment. To answer this query with real data, please connect me to the live ingestion pipeline.',
+        sources: []
+      }])
+    }, 1000)
+  }
 
   return (
-    <div className="relative inline-block">
-      <button
-        className="citation-badge mx-0.5"
-        onClick={() => setOpen(!open)}
-        title={`${citation.document_title} — Page ${citation.page_number ?? 'N/A'}`}
-      >
-        {index}
-      </button>
+    <div className="flex h-full w-full bg-background overflow-hidden relative">
+      
+      {/* Main Chat Area */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${activeSource ? 'mr-80' : ''}`}>
+        
+        {/* Header */}
+        <header className="h-16 flex items-center px-6 border-b border-white/5 bg-surface-300/80 backdrop-blur-md sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-md bg-brand-500/10 flex items-center justify-center border border-brand-500/20">
+              <Sparkles className="w-4 h-4 text-brand-400" />
+            </div>
+            <div>
+              <h1 className="text-sm font-semibold text-foreground">Financial Analyst Intelligence</h1>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-success" />
+                Enterprise RAG Pipeline Active
+              </p>
+            </div>
+          </div>
+        </header>
 
+        {/* Chat History */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 scroll-smooth">
+          <div className="max-w-4xl mx-auto space-y-8">
+            {messages.map((msg) => (
+              <motion.div 
+                key={msg.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {msg.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center shrink-0 shadow-glow-sm">
+                    <Bot className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                
+                <div className={`max-w-[85%] rounded-2xl p-5 ${
+                  msg.role === 'user' 
+                    ? 'bg-brand-600 text-white rounded-tr-sm shadow-card' 
+                    : 'bg-surface-200 border border-white/5 text-foreground rounded-tl-sm shadow-card'
+                }`}>
+                  <div className="prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 prose-a:text-brand-400">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+
+                  {/* Inline Sources/Citations Container */}
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-white/10 flex flex-wrap gap-2">
+                      {msg.sources.map((source: any, idx: number) => (
+                        <button 
+                          key={source.id}
+                          onClick={() => setActiveSource(source)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-100 border border-white/5 text-xs text-muted-foreground hover:bg-surface-300 hover:text-foreground transition-colors"
+                        >
+                          <FileText className="w-3 h-3 text-brand-400" />
+                          <span>[{idx + 1}] {source.title.substring(0, 20)}...</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-surface-100 border border-white/5 flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 sm:p-6 bg-surface-300/80 backdrop-blur-md border-t border-white/5">
+          <div className="max-w-4xl mx-auto relative">
+            <form onSubmit={handleSend} className="relative flex items-center">
+              <input 
+                type="text" 
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about your enterprise documents..." 
+                className="w-full bg-surface-200 border border-white/10 rounded-xl pl-4 pr-14 py-4 text-sm text-foreground focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 shadow-inner-glow transition-all"
+              />
+              <button 
+                type="submit"
+                disabled={!input.trim()}
+                className="absolute right-2 w-10 h-10 rounded-lg bg-brand-600 flex items-center justify-center text-white hover:bg-brand-500 disabled:opacity-50 disabled:hover:bg-brand-600 transition-colors"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+            <div className="text-center mt-2">
+              <span className="text-[10px] text-muted-foreground">AI can make mistakes. Always verify critical enterprise data against source documents.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Evidence Inspector Side Panel */}
       <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 5, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 5, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-0 mb-2 w-80 glass-card rounded-xl p-4 z-50 text-xs"
-            style={{ border: '1px solid rgba(59, 95, 255, 0.2)' }}
+        {activeSource && (
+          <motion.div 
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="w-80 border-l border-white/5 bg-surface-200 absolute right-0 top-0 bottom-0 z-20 shadow-2xl flex flex-col"
           >
-            <div className="flex items-start gap-2 mb-2">
-              <FileText className="w-3.5 h-3.5 text-brand-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <div className="font-semibold text-foreground">{citation.document_title}</div>
-                <div className="text-muted-foreground">{citation.filename}</div>
+            <div className="h-16 flex items-center justify-between px-4 border-b border-white/5 bg-surface-300">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <FileText className="w-4 h-4 text-brand-400" />
+                Source Inspector
+              </h2>
+              <button 
+                onClick={() => setActiveSource(null)}
+                className="p-1.5 rounded-md hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Document</h3>
+                  <div className="p-3 rounded-lg bg-surface-100 border border-white/5 flex items-start gap-3 cursor-pointer hover:bg-white/5 transition-colors group">
+                    <FileText className="w-5 h-5 text-brand-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground break-all">{activeSource.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 group-hover:text-brand-400 transition-colors">
+                        View original <ExternalLink className="w-3 h-3" />
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Metrics</h3>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface-100 border border-white/5">
+                    <span className="text-xs text-muted-foreground">Retrieval Confidence</span>
+                    <span className="text-xs font-mono font-medium text-success bg-success/10 px-2 py-0.5 rounded">
+                      {(activeSource.confidence * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Extracted Context</h3>
+                  <div className="p-4 rounded-lg bg-surface-100 border border-white/5 relative">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-brand-500 rounded-l-lg" />
+                    <p className="text-sm text-foreground leading-relaxed italic">
+                      "{activeSource.snippet}"
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-
-            {citation.page_number && (
-              <div className="text-muted-foreground mb-2">Page {citation.page_number}</div>
-            )}
-            {citation.section && (
-              <div className="text-muted-foreground mb-2">{citation.section}</div>
-            )}
-
-            <div className="border-t border-white/5 pt-2 mt-2">
-              <div className="text-muted-foreground line-clamp-3">{citation.content_snippet}</div>
-            </div>
-
-            <div className="flex items-center gap-1 mt-2">
-              <div className="text-muted-foreground">Relevance:</div>
-              <div className="flex gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-2 h-1.5 rounded-sm"
-                    style={{
-                      background: i < Math.round(citation.relevance_score * 5)
-                        ? '#3b5fff'
-                        : 'rgba(255,255,255,0.1)',
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="text-brand-400 font-mono">
-                {(citation.relevance_score * 100).toFixed(0)}%
-              </div>
-            </div>
-
-            <button
-              className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
-              onClick={() => setOpen(false)}
-            >
-              <X className="w-3 h-3" />
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  )
-}
 
-// ─── Message Content Renderer ─────────────────────────────────────────────
-
-function MessageContent({
-  content,
-  citations,
-}: {
-  content: string
-  citations?: Citation[]
-}) {
-  if (!citations?.length) {
-    return <div className="prose prose-sm prose-invert max-w-none leading-relaxed">{content}</div>
-  }
-
-  // Replace [1], [2] etc with interactive citation badges
-  const parts = content.split(/(\[\d+\])/g)
-
-  return (
-    <div className="leading-relaxed">
-      {parts.map((part, i) => {
-        const match = part.match(/^\[(\d+)\]$/)
-        if (match) {
-          const num = parseInt(match[1])
-          const citation = citations[num - 1]
-          if (citation) {
-            return <CitationTooltip key={i} citation={citation} index={num} />
-          }
-        }
-        return <span key={i}>{part}</span>
-      })}
-    </div>
-  )
-}
-
-// ─── Chat Message ─────────────────────────────────────────────────────────
-
-function ChatMessage({
-  message,
-  onFeedback,
-}: {
-  message: Message
-  onFeedback?: (id: string, feedback: 'thumbs_up' | 'thumbs_down') => void
-}) {
-  const [copied, setCopied] = useState(false)
-  const [feedback, setFeedback] = useState<'thumbs_up' | 'thumbs_down' | null>(null)
-  const isUser = message.role === 'user'
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(message.content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleFeedback = (type: 'thumbs_up' | 'thumbs_down') => {
-    setFeedback(type)
-    onFeedback?.(message.id, type)
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-    >
-      {/* Avatar */}
-      <div
-        className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${
-          isUser
-            ? 'bg-brand-600'
-            : 'bg-gradient-to-br from-purple-600 to-brand-600'
-        }`}
-      >
-        {isUser ? (
-          <User className="w-4 h-4 text-white" />
-        ) : (
-          <Bot className="w-4 h-4 text-white" />
-        )}
-      </div>
-
-      <div className={`flex flex-col gap-2 max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
-        {/* Bubble */}
-        <div className={isUser ? 'chat-user text-sm' : 'chat-assistant text-sm'}>
-          {message.streaming && !message.content ? (
-            <div className="flex gap-1 py-1">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-2 h-2 rounded-full bg-brand-400"
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-                />
-              ))}
-            </div>
-          ) : (
-            <MessageContent content={message.content} citations={message.citations} />
-          )}
-        </div>
-
-        {/* Citations panel */}
-        {!isUser && message.citations && message.citations.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="w-full"
-          >
-            <div className="text-[10px] text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
-              <BookOpen className="w-3 h-3" />
-              {message.citations.length} Sources
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {message.citations.slice(0, 5).map((citation, i) => (
-                <div
-                  key={citation.chunk_id}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px]"
-                  style={{
-                    background: 'rgba(59, 95, 255, 0.08)',
-                    border: '1px solid rgba(59, 95, 255, 0.15)',
-                  }}
-                >
-                  <span className="text-brand-400 font-bold">[{i + 1}]</span>
-                  <FileText className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-muted-foreground truncate max-w-[120px]">
-                    {citation.filename}
-                  </span>
-                  {citation.page_number && (
-                    <span className="text-muted-foreground">p.{citation.page_number}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Confidence + Metadata bar */}
-        {!isUser && message.confidence_score !== undefined && (
-          <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
-            {/* Confidence */}
-            <div className="flex items-center gap-1">
-              {message.confidence_score > 0.7 ? (
-                <CheckCircle2 className="w-3 h-3 text-success" />
-              ) : message.confidence_score > 0.4 ? (
-                <AlertTriangle className="w-3 h-3 text-warning" />
-              ) : (
-                <AlertTriangle className="w-3 h-3 text-destructive" />
-              )}
-              <span>Confidence: </span>
-              <span
-                className={
-                  message.confidence_score > 0.7
-                    ? 'text-success font-semibold'
-                    : message.confidence_score > 0.4
-                    ? 'text-warning font-semibold'
-                    : 'text-destructive font-semibold'
-                }
-              >
-                {(message.confidence_score * 100).toFixed(0)}%
-              </span>
-            </div>
-
-            {/* Latency */}
-            {message.latency_ms && (
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                <span>{message.latency_ms}ms</span>
-              </div>
-            )}
-
-            {/* Tokens */}
-            {message.tokens_used && (
-              <div className="flex items-center gap-1">
-                <Zap className="w-3 h-3" />
-                <span>{message.tokens_used} tokens</span>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-1 ml-auto">
-              <button
-                onClick={handleCopy}
-                className="p-1 rounded hover:bg-white/5 transition-colors"
-                title="Copy response"
-              >
-                {copied ? (
-                  <CheckCircle2 className="w-3 h-3 text-success" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
-              </button>
-
-              <button
-                onClick={() => handleFeedback('thumbs_up')}
-                className={`p-1 rounded hover:bg-white/5 transition-colors ${
-                  feedback === 'thumbs_up' ? 'text-success' : ''
-                }`}
-              >
-                <ThumbsUp className="w-3 h-3" />
-              </button>
-
-              <button
-                onClick={() => handleFeedback('thumbs_down')}
-                className={`p-1 rounded hover:bg-white/5 transition-colors ${
-                  feedback === 'thumbs_down' ? 'text-destructive' : ''
-                }`}
-              >
-                <ThumbsDown className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  )
-}
-
-// ─── Suggested Queries ────────────────────────────────────────────────────
-
-const SUGGESTED_QUERIES = [
-  'What are the key obligations and liabilities in this contract?',
-  'Summarize the compliance requirements across all uploaded policies.',
-  'Find clauses that deviate from standard industry templates.',
-  'What are the payment terms and penalty clauses?',
-  'Identify all parties mentioned and their roles.',
-  'What are the termination conditions in this agreement?',
-]
-
-// ─── Main Chat Interface ──────────────────────────────────────────────────
-
-export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content:
-        "Hello! I'm your enterprise document intelligence assistant. I can analyze your uploaded documents, answer questions with source citations, compare clauses, and identify compliance risks.\n\nWhat would you like to explore today?",
-      citations: [],
-      confidence_score: 1.0,
-      timestamp: new Date(),
-    },
-  ])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [sessionId] = useState(() => crypto.randomUUID())
-  const [selectedDocs, setSelectedDocs] = useState<string[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(true)
-
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages, scrollToBottom])
-
-  const sendMessage = useCallback(async (query: string) => {
-    if (!query.trim() || isLoading) return
-
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: query.trim(),
-      timestamp: new Date(),
-    }
-
-    const assistantMsgId = crypto.randomUUID()
-    const assistantMessage: Message = {
-      id: assistantMsgId,
-      role: 'assistant',
-      content: '',
-      streaming: true,
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage, assistantMessage])
-    setInput('')
-    setIsLoading(true)
-    setShowSuggestions(false)
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/query`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-          },
-          body: JSON.stringify({
-            query: query.trim(),
-            session_id: sessionId,
-            document_ids: selectedDocs.length > 0 ? selectedDocs : null,
-            stream: true,
-            top_k: 5,
-          }),
-        }
-      )
-
-      if (!response.body) throw new Error('No response body')
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let fullContent = ''
-      let finalMeta: Partial<Message> = {}
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n').filter((l) => l.startsWith('data: '))
-
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line.slice(6))
-
-            if (data.type === 'token') {
-              fullContent += data.content
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? { ...m, content: fullContent, streaming: true }
-                    : m
-                )
-              )
-            } else if (data.type === 'done') {
-              finalMeta = {
-                citations: data.citations || [],
-                confidence_score: data.confidence_score,
-                answer_refused: data.answer_refused,
-                tokens_used: data.tokens_used,
-                latency_ms: data.total_latency_ms,
-              }
-            } else if (data.type === 'error') {
-              fullContent = 'An error occurred while generating the response. Please try again.'
-            }
-          } catch {
-            // Skip malformed JSON chunks
-          }
-        }
-      }
-
-      // Finalize message
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMsgId
-            ? { ...m, content: fullContent, streaming: false, ...finalMeta }
-            : m
-        )
-      )
-    } catch (error) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMsgId
-            ? {
-                ...m,
-                content: 'Failed to connect to the AI service. Please check your connection and try again.',
-                streaming: false,
-                confidence_score: 0,
-              }
-            : m
-        )
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }, [isLoading, sessionId, selectedDocs])
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage(input)
-    }
-  }
-
-  const handleFeedback = useCallback(
-    async (queryId: string, feedback: 'thumbs_up' | 'thumbs_down') => {
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/sessions/${sessionId}/feedback`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-          },
-          body: JSON.stringify({ query_id: queryId, feedback }),
-        })
-      } catch {
-        // Non-critical
-      }
-    },
-    [sessionId]
-  )
-
-  return (
-    <div className="flex flex-col h-full bg-surface-300">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.04]">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #8b5cf6, #3b5fff)' }}
-          >
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold text-foreground">AI Document Chat</h1>
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              <div className="status-online" />
-              <span>GPT-4o · Hybrid RAG · Source Citations Enabled</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-all hover:bg-white/5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            New Session
-          </button>
-          <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-        {messages.map((message) => (
-          <ChatMessage
-            key={message.id}
-            message={message}
-            onFeedback={handleFeedback}
-          />
-        ))}
-
-        {/* Suggested queries (shown when no messages) */}
-        <AnimatePresence>
-          {showSuggestions && messages.length === 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="pt-4"
-            >
-              <div className="text-xs text-muted-foreground mb-3 font-medium flex items-center gap-1.5">
-                <MessageSquare className="w-3 h-3" />
-                Suggested Queries
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {SUGGESTED_QUERIES.map((query) => (
-                  <button
-                    key={query}
-                    onClick={() => sendMessage(query)}
-                    className="text-left px-4 py-3 rounded-xl text-xs text-muted-foreground hover:text-foreground transition-all duration-200 group"
-                    style={{
-                      background: 'rgba(255,255,255,0.02)',
-                      border: '1px solid rgba(255,255,255,0.05)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(59, 95, 255, 0.2)'
-                      e.currentTarget.style.background = 'rgba(59, 95, 255, 0.05)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
-                    }}
-                  >
-                    <span className="group-hover:text-brand-400 transition-colors mr-1">→</span>
-                    {query}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area */}
-      <div
-        className="px-6 py-4 border-t border-white/[0.04]"
-        style={{ background: 'rgba(15, 17, 32, 0.8)', backdropFilter: 'blur(12px)' }}
-      >
-        <div
-          className="flex items-end gap-3 rounded-2xl p-3"
-          style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask anything about your documents... (Shift+Enter for newline)"
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none leading-relaxed"
-            rows={1}
-            style={{ maxHeight: '120px', minHeight: '20px' }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement
-              target.style.height = 'auto'
-              target.style.height = Math.min(target.scrollHeight, 120) + 'px'
-            }}
-            disabled={isLoading}
-          />
-
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={!input.trim() || isLoading}
-            className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-40"
-            style={{
-              background: input.trim() && !isLoading
-                ? 'linear-gradient(135deg, #3b5fff, #8b5cf6)'
-                : 'rgba(255,255,255,0.05)',
-            }}
-          >
-            {isLoading ? (
-              <RefreshCw className="w-4 h-4 text-white animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 text-white" />
-            )}
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between mt-2 px-1 text-[10px] text-muted-foreground">
-          <span>Responses grounded in your documents. Citations included.</span>
-          <span>Enter to send · Shift+Enter for newline</span>
-        </div>
-      </div>
     </div>
   )
 }

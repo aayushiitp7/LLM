@@ -18,6 +18,7 @@ import {
   X,
   FileText
 } from 'lucide-react'
+import { CommandPalette } from '@/components/command-palette'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -132,11 +133,21 @@ export default function DashboardLayout({
         <header className="h-16 flex items-center justify-between px-4 sm:px-6 border-b border-white/5 bg-surface-300/80 backdrop-blur-xl z-40 sticky top-0">
           <div className="flex items-center gap-4">
             <button 
-              className="md:hidden p-2 text-muted-foreground hover:text-foreground"
+              className="md:hidden p-2 text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <Menu className="w-5 h-5" />
             </button>
+            
+            <div className="hidden md:flex items-center text-sm text-muted-foreground bg-surface-200 border border-white/5 rounded-md px-3 py-1.5 cursor-pointer hover:bg-surface-100 transition-colors"
+                 onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}>
+              <Search className="w-4 h-4 mr-2 opacity-50" />
+              <span>Search everything...</span>
+              <div className="ml-8 flex items-center gap-1 opacity-50 font-mono text-[10px]">
+                <span className="px-1 border border-white/10 rounded">⌘</span>
+                <span className="px-1 border border-white/10 rounded">K</span>
+              </div>
+            </div>
             
             {/* Breadcrumb / Status */}
             <div className="hidden sm:flex items-center gap-2 text-sm">
@@ -155,12 +166,25 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        {/* Page Content */}
+        {/* Page Content with Framer Motion Page Transitions */}
         <main className="flex-1 overflow-auto relative">
-          {/* Background subtle noise/grid can go here if desired */}
-          {children}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
+
+      {/* Global Command Palette Component */}
+      <CommandPalette />
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
