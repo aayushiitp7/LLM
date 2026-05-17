@@ -2,216 +2,255 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell 
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, PieChart, Pie, Cell, LineChart, Line
 } from 'recharts'
-import { 
-  Activity, ArrowUpRight, ArrowDownRight, 
-  Files, Users, BrainCircuit, Clock 
+import {
+  Files, BrainCircuit, Users, Clock, ArrowUpRight, ArrowDownRight,
+  Activity, TrendingUp, AlertTriangle, CheckCircle2, Zap, Database
 } from 'lucide-react'
+import Link from 'next/link'
 
-// --- Mock Data ---
-const usageData = [
-  { name: 'Mon', queries: 4000, documents: 2400 },
-  { name: 'Tue', queries: 3000, documents: 1398 },
-  { name: 'Wed', queries: 2000, documents: 9800 },
-  { name: 'Thu', queries: 2780, documents: 3908 },
-  { name: 'Fri', queries: 1890, documents: 4800 },
-  { name: 'Sat', queries: 2390, documents: 3800 },
-  { name: 'Sun', queries: 3490, documents: 4300 },
+// ── Data ─────────────────────────────────────────────────────────────────────
+const queryVolumeData = [
+  { day: 'Mon', queries: 2840, indexed: 1240 },
+  { day: 'Tue', queries: 3200, indexed: 890 },
+  { day: 'Wed', queries: 2100, indexed: 3400 },
+  { day: 'Thu', queries: 3900, indexed: 1800 },
+  { day: 'Fri', queries: 4200, indexed: 2200 },
+  { day: 'Sat', queries: 1800, indexed: 960 },
+  { day: 'Sun', queries: 2100, indexed: 1100 },
 ]
 
-const pieData = [
-  { name: 'Financial', value: 400 },
-  { name: 'Legal', value: 300 },
-  { name: 'HR', value: 300 },
-  { name: 'Technical', value: 200 },
+const docTypeData = [
+  { name: 'Legal', value: 32 },
+  { name: 'Finance', value: 28 },
+  { name: 'HR', value: 22 },
+  { name: 'Technical', value: 18 },
+]
+const PIE_COLORS = ['#e4e4e7', '#a1a1aa', '#71717a', '#52525b']
+
+const confidenceData = [
+  { range: '90–100%', count: 1840 },
+  { range: '80–90%', count: 2210 },
+  { range: '70–80%', count: 980 },
+  { range: '60–70%', count: 340 },
+  { range: '<60%', count: 90 },
 ]
 
-const COLORS = ['#fafafa', '#a1a1aa', '#52525b', '#27272a'] // Monochrome strict
-
-const recentActivity = [
-  { id: 1, action: 'Document Indexed', target: 'Q3_Financial_Report.pdf', time: '2m ago', user: 'System' },
-  { id: 2, action: 'Query Executed', target: 'Semantic Search: "Revenue projections"', time: '15m ago', user: 'Alice Chen' },
-  { id: 3, action: 'User Invited', target: 'robert.smith@enterprise.com', time: '1h ago', user: 'Admin' },
-  { id: 4, action: 'Model Updated', target: 'GPT-4o fine-tuning complete', time: '2h ago', user: 'System' },
+const activityLog = [
+  { id: 1, type: 'index', icon: Database, message: 'Q3_Financial_Report_v2.pdf indexed', meta: '2m ago', user: 'System', status: 'success' },
+  { id: 2, type: 'query', icon: BrainCircuit, message: 'RAG query: "Revenue projections EMEA Q4"', meta: '14m ago', user: 'Alice Chen', status: 'success' },
+  { id: 3, type: 'alert', icon: AlertTriangle, message: 'Contract_AcmeCorp.pdf — high risk clauses detected', meta: '1h ago', user: 'Compliance Bot', status: 'warning' },
+  { id: 4, type: 'user', icon: Users, message: 'User robert.smith@corp.com provisioned (Analyst role)', meta: '2h ago', user: 'Admin', status: 'info' },
+  { id: 5, type: 'index', icon: Database, message: 'Employee_Handbook_2026.docx indexed successfully', meta: '3h ago', user: 'System', status: 'success' },
+  { id: 6, type: 'query', icon: BrainCircuit, message: 'RAG query: "Which invoices are unpaid past 60 days?"', meta: '4h ago', user: 'Finance Ops', status: 'success' },
 ]
 
-// --- Animation Variants ---
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05 }
-  }
-}
+const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
+const fadeUp = { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.2 } } }
 
-const item = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { type: 'tween', duration: 0.2 } }
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-popover border border-border rounded-lg p-3 text-xs shadow-lg">
+      <p className="font-semibold text-foreground mb-2">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.name} className="text-muted-foreground">
+          <span className="font-medium text-foreground">{p.value.toLocaleString()}</span> {p.name}
+        </p>
+      ))}
+    </div>
+  )
 }
 
 export default function DashboardPage() {
   return (
-    <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-6">
-      {/* Header */}
-      <motion.div 
+    <div className="page-container space-y-6">
+
+      {/* ── Header ────────────────────────────────────────────────────── */}
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.2 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6"
+        className="page-header"
       >
         <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1">Platform metrics and operational intelligence.</p>
+          <h1 className="page-title">Platform Overview</h1>
+          <p className="page-description">Real-time operational intelligence and system health.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="btn-secondary">Export Data</button>
-          <button className="btn-primary">New Query</button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-secondary text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            All Systems Operational
+          </div>
+          <Link href="/documents" className="btn-primary text-xs">Upload Document</Link>
         </div>
       </motion.div>
 
-      {/* Top Metrics Cards */}
-      <motion.div 
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-      >
+      {/* ── KPI Cards ─────────────────────────────────────────────────── */}
+      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total Documents', value: '124,592', change: '+12.5%', isUp: true, icon: Files },
-          { label: 'AI Queries (7d)', value: '32.4k', change: '+24.1%', isUp: true, icon: BrainCircuit },
-          { label: 'Active Users', value: '1,429', change: '-2.4%', isUp: false, icon: Users },
-          { label: 'Avg Processing Time', value: '0.4s', change: '-12%', isUp: true, icon: Clock },
-        ].map((stat, i) => (
-          <motion.div key={i} variants={item} className="premium-card p-5 group cursor-default">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{stat.label}</span>
-              <stat.icon className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="flex items-end justify-between">
-              <span className="text-2xl font-semibold text-foreground tracking-tight">{stat.value}</span>
-              <span className={`flex items-center text-xs font-medium ${stat.isUp ? 'text-success' : 'text-danger'}`}>
-                {stat.isUp ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
-                {stat.change}
+          { label: 'Total Documents', value: '124,592', change: '+12.5%', up: true, icon: Files, sub: 'In knowledge index' },
+          { label: 'AI Queries (7d)', value: '32,408', change: '+24.1%', up: true, icon: BrainCircuit, sub: 'RAG pipeline executions' },
+          { label: 'Active Users', value: '1,429', change: '-2.4%', up: false, icon: Users, sub: 'Across all departments' },
+          { label: 'Avg Latency', value: '420ms', change: '-18%', up: true, icon: Clock, sub: 'End-to-end retrieval' },
+        ].map((kpi, i) => (
+          <motion.div key={i} variants={fadeUp} className="premium-card p-5 hover:border-border/60 transition-colors">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-8 h-8 rounded border border-border bg-secondary flex items-center justify-center">
+                <kpi.icon className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <span className={`flex items-center gap-0.5 text-[10px] font-bold ${kpi.up ? 'text-emerald-400' : 'text-red-400'}`}>
+                {kpi.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                {kpi.change}
               </span>
             </div>
+            <div className="text-2xl font-bold tracking-tight font-mono-number mb-1">{kpi.value}</div>
+            <div className="section-label">{kpi.label}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">{kpi.sub}</div>
           </motion.div>
         ))}
       </motion.div>
 
-      {/* Charts Section */}
-      <motion.div 
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
-      >
-        {/* Main Area Chart */}
-        <motion.div variants={item} className="premium-card p-5 lg:col-span-2 flex flex-col">
-          <div className="flex items-center justify-between mb-6">
+      {/* ── Charts Row ────────────────────────────────────────────────── */}
+      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        {/* Main area chart */}
+        <motion.div variants={fadeUp} className="premium-card p-5 lg:col-span-2">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Usage Analytics</h2>
+              <h2 className="text-sm font-semibold">Query Volume & Indexing</h2>
+              <p className="text-[10px] text-muted-foreground mt-0.5">7-day rolling window</p>
             </div>
-            <select className="bg-background border border-border text-xs rounded-md px-2 py-1 outline-none focus:border-ring cursor-pointer">
+            <select className="text-xs bg-secondary border border-border rounded-md px-2 py-1 text-foreground outline-none">
               <option>Last 7 days</option>
               <option>Last 30 days</option>
             </select>
           </div>
-          <div className="flex-1 min-h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={usageData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-                <YAxis stroke="#a1a1aa" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '4px', fontSize: '12px' }}
-                  itemStyle={{ color: '#fafafa' }}
-                />
-                <Area type="monotone" dataKey="queries" stroke="#fafafa" strokeWidth={1.5} fillOpacity={0.1} fill="#fafafa" />
-                <Area type="monotone" dataKey="documents" stroke="#52525b" strokeWidth={1.5} fillOpacity={0.1} fill="#52525b" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={queryVolumeData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gQ" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#e4e4e7" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="#e4e4e7" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gI" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#71717a" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="#71717a" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="2 4" stroke="hsl(240 3.7% 14%)" vertical={false} />
+              <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(240 5% 55%)' }} tickLine={false} axisLine={false} dy={6} />
+              <YAxis tick={{ fontSize: 10, fill: 'hsl(240 5% 55%)' }} tickLine={false} axisLine={false} tickFormatter={v => `${(v/1000).toFixed(1)}k`} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" dataKey="queries" name="Queries" stroke="#e4e4e7" strokeWidth={1.5} fill="url(#gQ)" />
+              <Area type="monotone" dataKey="indexed" name="Indexed" stroke="#71717a" strokeWidth={1.5} fill="url(#gI)" />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <div className="w-3 h-0.5 bg-zinc-200 rounded" /> Queries
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <div className="w-3 h-0.5 bg-zinc-500 rounded" /> Documents Indexed
+            </div>
           </div>
         </motion.div>
 
-        {/* Pie Chart */}
-        <motion.div variants={item} className="premium-card p-5 flex flex-col">
-          <div className="mb-6">
-            <h2 className="text-sm font-semibold text-foreground">Distribution</h2>
+        {/* Donut chart */}
+        <motion.div variants={fadeUp} className="premium-card p-5">
+          <div className="mb-5">
+            <h2 className="text-sm font-semibold">Document Distribution</h2>
+            <p className="text-[10px] text-muted-foreground mt-0.5">By department</p>
           </div>
-          <div className="flex-1 flex flex-col justify-center relative min-h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '4px', fontSize: '12px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Custom Legend */}
-            <div className="grid grid-cols-2 gap-x-2 gap-y-3 mt-4">
-              {pieData.map((entry, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                  <span className="text-xs text-muted-foreground truncate">{entry.name}</span>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart>
+              <Pie
+                data={docTypeData} dataKey="value"
+                cx="50%" cy="50%"
+                innerRadius={45} outerRadius={70}
+                paddingAngle={2} stroke="none"
+              >
+                {docTypeData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="space-y-2 mt-3">
+            {docTypeData.map((d, i) => (
+              <div key={d.name} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: PIE_COLORS[i] }} />
+                  <span className="text-muted-foreground">{d.name}</span>
                 </div>
-              ))}
-            </div>
+                <span className="font-mono-number font-semibold">{d.value}%</span>
+              </div>
+            ))}
           </div>
         </motion.div>
       </motion.div>
 
-      {/* Activity Stream */}
-      <motion.div 
-        variants={item}
-        initial="hidden"
-        animate="show"
-        className="premium-card overflow-hidden"
-      >
-        <div className="p-5 border-b border-border flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">System Log</h2>
-          <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-            <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-            Live Sync
+      {/* ── Confidence + Activity ─────────────────────────────────────── */}
+      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+        {/* Confidence histogram */}
+        <motion.div variants={fadeUp} className="premium-card p-5 lg:col-span-2">
+          <div className="mb-5">
+            <h2 className="text-sm font-semibold">RAG Confidence Distribution</h2>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Answer confidence scores across {(5460).toLocaleString()} queries</p>
           </div>
-        </div>
-        <div className="divide-y divide-border">
-          {recentActivity.map((activity) => (
-            <div key={activity.id} className="px-5 py-3 flex items-center gap-4 hover:bg-secondary/50 transition-colors cursor-pointer group">
-              <div className="w-8 h-8 rounded bg-background border border-border flex items-center justify-center shrink-0">
-                <Activity className="w-3.5 h-3.5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{activity.action}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{activity.target}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">{activity.time}</p>
-                  <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded bg-background border border-border text-muted-foreground">
-                    {activity.user}
-                  </span>
-                </div>
-              </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={confidenceData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="hsl(240 3.7% 14%)" vertical={false} />
+              <XAxis dataKey="range" tick={{ fontSize: 9, fill: 'hsl(240 5% 55%)' }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 9, fill: 'hsl(240 5% 55%)' }} tickLine={false} axisLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" name="Queries" radius={[2, 2, 0, 0]}>
+                {confidenceData.map((_, i) => (
+                  <Cell key={i} fill={i < 2 ? '#e4e4e7' : i < 4 ? '#71717a' : '#ef4444'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+
+        {/* System log */}
+        <motion.div variants={fadeUp} className="premium-card overflow-hidden lg:col-span-3">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+            <h2 className="text-sm font-semibold">System Activity Log</h2>
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Live
             </div>
-          ))}
-        </div>
+          </div>
+          <div className="divide-y divide-border">
+            {activityLog.map(log => (
+              <div key={log.id} className="flex items-start gap-3 px-5 py-3 hover:bg-muted/30 transition-colors group cursor-pointer">
+                <div className={`w-7 h-7 rounded border flex items-center justify-center shrink-0 mt-0.5 ${
+                  log.status === 'success' ? 'border-border bg-secondary' :
+                  log.status === 'warning' ? 'border-amber-400/20 bg-amber-400/10' : 'border-blue-400/20 bg-blue-400/10'
+                }`}>
+                  <log.icon className={`w-3.5 h-3.5 ${
+                    log.status === 'success' ? 'text-muted-foreground' :
+                    log.status === 'warning' ? 'text-amber-400' : 'text-blue-400'
+                  }`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-foreground leading-tight">{log.message}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{log.user} · {log.meta}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="px-5 py-2.5 border-t border-border bg-muted/20">
+            <button className="text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider">
+              View Full Audit Log →
+            </button>
+          </div>
+        </motion.div>
       </motion.div>
+
     </div>
   )
 }

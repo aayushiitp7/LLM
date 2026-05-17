@@ -1,218 +1,401 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, FileText, X, ExternalLink, ShieldCheck } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import {
+  Send, Bot, User, FileText, X, ExternalLink, ShieldCheck,
+  Brain, ChevronDown, ChevronUp, Sparkles, AlertCircle, MessageSquare
+} from 'lucide-react'
 
-// --- Mock Data ---
-const MOCK_CHAT = [
-  { 
-    id: 1, 
-    role: 'user', 
-    content: 'What were our revenue projections for Q3 based on the latest financial models?' 
+// ── Types ────────────────────────────────────────────────────────────────────
+interface Source {
+  id: string
+  title: string
+  confidence: number
+  snippet: string
+  page?: number
+}
+
+interface Message {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  sources?: Source[]
+  isLoading?: boolean
+}
+
+// ── Seed conversation ─────────────────────────────────────────────────────────
+const INITIAL_MESSAGES: Message[] = [
+  {
+    id: 1, role: 'user',
+    content: 'Which contracts have termination notice periods less than 30 days?',
   },
-  { 
-    id: 2, 
-    role: 'assistant', 
-    content: 'Based on the latest financial models, our Q3 revenue projections indicate a **14.5% year-over-year increase**, reaching approximately $45.2M. \n\nThis growth is primarily driven by the expansion of our enterprise SaaS segment and increased renewals in the EMEA region [[1]](#). However, the operational costs are also projected to rise by 4.2% due to data center expansions [[2]](#).\n\nWould you like a breakdown of the specific product lines driving this revenue?',
+  {
+    id: 2, role: 'assistant',
+    content: `Based on my analysis of the contract corpus, **3 contracts** have termination notice periods below 30 days:\n\n1. **Acme Corp MSA (2023)** — 14-day notice clause (§12.3)\n2. **Vendor Agreement — DataSync Ltd** — 7-day notice for T&M engagements\n3. **SubProcessor DPA — CloudHost Inc** — 21-day notice on data processing termination\n\nThis represents a **compliance risk** under your standard contract policy which mandates minimum 30-day notice. I recommend escalating items 1 and 2 for renegotiation.`,
     sources: [
-      { id: '1', title: 'Q3_Financial_Projections_v4.xlsx', confidence: 0.94, snippet: 'EMEA region shows strong renewal rates at 92%, contributing to the 14.5% YoY growth projection ($45.2M total).' },
-      { id: '2', title: 'Data_Center_Expansion_Budget.pdf', confidence: 0.88, snippet: 'Total operational costs (OpEx) for Q3 will increase by an estimated 4.2% to cover the new Frankfurt data center rollout.' }
+      { id: 's1', title: 'Acme_Corp_MSA_2023.pdf', confidence: 0.97, snippet: '§12.3 Either party may terminate this Agreement upon 14 days written notice to the other party without cause.', page: 8 },
+      { id: 's2', title: 'DataSync_Vendor_Agreement_v2.pdf', confidence: 0.94, snippet: 'For time-and-materials engagements, either party may terminate with 7 calendar days written notice.', page: 3 },
+      { id: 's3', title: 'CloudHost_DPA_SubProcessor.pdf', confidence: 0.89, snippet: 'Termination of data processing activities shall be notified 21 days in advance per GDPR Article 28.', page: 12 },
     ]
   }
 ]
 
-export default function ChatPage() {
-  const [messages, setMessages] = useState(MOCK_CHAT)
-  const [input, setInput] = useState('')
-  const [activeSource, setActiveSource] = useState<any | null>(null)
+const SUGGESTED_QUERIES = [
+  'Summarize all invoices exceeding $100k in Q3',
+  'Which employees have non-compete clauses expiring in 2026?',
+  'Find all contracts with auto-renewal provisions',
+  'What are the key risks in the Acme Corp agreement?',
+]
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim()) return
-    
-    const newMsg = { id: Date.now(), role: 'user', content: input }
-    setMessages([...messages, newMsg])
-    setInput('')
-    
-    // Simulate AI response
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: 'I am operating in a read-only environment. Please configure the ingestion pipeline to process real queries.',
-        sources: []
-      }])
-    }, 800)
+// ── Source Card ───────────────────────────────────────────────────────────────
+function SourceCard({ source, onClick, isActive }: { source: Source; onClick: () => void; isActive: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs transition-all border ${
+        isActive
+          ? 'bg-foreground text-background border-foreground'
+          : 'bg-secondary text-muted-foreground border-border hover:border-muted-foreground hover:text-foreground'
+      }`}
+    >
+      <FileText className="w-3 h-3 shrink-0" />
+      <span className="truncate max-w-[140px]">{source.title.replace('.pdf','').replace('.docx','').substring(0,20)}…</span>
+      <span className={`font-mono-number text-[10px] font-bold ${isActive ? 'text-background/70' : 'text-muted-foreground'}`}>
+        {(source.confidence * 100).toFixed(0)}%
+      </span>
+    </button>
+  )
+}
+
+// ── Typing indicator ─────────────────────────────────────────────────────────
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1 px-1">
+      {[0, 1, 2].map(i => (
+        <motion.div
+          key={i}
+          className="w-1.5 h-1.5 rounded-full bg-muted-foreground"
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ── Message Bubble ────────────────────────────────────────────────────────────
+function MessageBubble({ msg, onSourceClick, activeSourceId }: {
+  msg: Message
+  onSourceClick: (s: Source) => void
+  activeSourceId: string | null
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  // Format markdown-like content
+  const formatContent = (text: string) => {
+    return text
+      .split('\n')
+      .map((line, i) => {
+        if (line.startsWith('**') && line.endsWith('**')) {
+          return <p key={i} className="font-semibold text-foreground">{line.slice(2, -2)}</p>
+        }
+        // Bold inline
+        const parts = line.split(/(\*\*[^*]+\*\*)/g)
+        return (
+          <p key={i} className={line.startsWith('1.') || line.startsWith('2.') || line.startsWith('3.') ? 'ml-3' : ''}>
+            {parts.map((part, j) =>
+              part.startsWith('**') && part.endsWith('**')
+                ? <strong key={j}>{part.slice(2, -2)}</strong>
+                : part
+            )}
+          </p>
+        )
+      })
+  }
+
+  if (msg.role === 'user') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.15 }}
+        className="flex justify-end gap-3"
+      >
+        <div className="max-w-[75%] bg-primary text-primary-foreground rounded-xl rounded-tr-md px-4 py-3 text-sm leading-relaxed">
+          {msg.content}
+        </div>
+        <div className="w-7 h-7 rounded-full border border-border bg-secondary flex items-center justify-center shrink-0 mt-1">
+          <User className="w-3.5 h-3.5 text-foreground" />
+        </div>
+      </motion.div>
+    )
   }
 
   return (
-    <div className="flex h-full w-full bg-background overflow-hidden relative">
-      
-      {/* Main Chat Area */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${activeSource ? 'mr-80' : ''}`}>
-        
-        {/* Header */}
-        <header className="h-14 flex items-center px-6 border-b border-border bg-popover sticky top-0 z-10 shadow-subtle">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center border border-border">
-              <Bot className="w-3.5 h-3.5 text-foreground" />
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15 }}
+      className="flex gap-3"
+    >
+      <div className="w-7 h-7 rounded-full border border-border bg-secondary flex items-center justify-center shrink-0 mt-1">
+        <Brain className="w-3.5 h-3.5 text-foreground" />
+      </div>
+      <div className="flex-1 max-w-[85%]">
+        <div className="premium-card px-4 py-4">
+          {msg.isLoading ? (
+            <TypingIndicator />
+          ) : (
+            <div className="text-sm text-foreground leading-relaxed space-y-1.5">
+              {formatContent(msg.content)}
             </div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-sm font-semibold text-foreground">Financial Intelligence</h1>
-              <span className="text-muted-foreground">/</span>
-              <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <ShieldCheck className="w-3 h-3 text-success" />
-                Pipeline Active
-              </p>
+          )}
+
+          {/* Sources */}
+          {msg.sources && msg.sources.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="flex items-center gap-1.5 mb-2">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {msg.sources.length} source{msg.sources.length > 1 ? 's' : ''} retrieved
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {msg.sources.map(source => (
+                  <SourceCard
+                    key={source.id}
+                    source={source}
+                    isActive={activeSourceId === source.id}
+                    onClick={() => onSourceClick(source)}
+                  />
+                ))}
+              </div>
             </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+export default function ChatPage() {
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [activeSource, setActiveSource] = useState<Source | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
+
+  const handleSend = (text?: string) => {
+    const q = (text || input).trim()
+    if (!q || isLoading) return
+    setInput('')
+
+    const userMsg: Message = { id: Date.now(), role: 'user', content: q }
+    const loadingMsg: Message = { id: Date.now() + 1, role: 'assistant', content: '', isLoading: true }
+
+    setMessages(prev => [...prev, userMsg, loadingMsg])
+    setIsLoading(true)
+
+    setTimeout(() => {
+      setMessages(prev => prev.map(m =>
+        m.isLoading ? {
+          ...m,
+          isLoading: false,
+          content: 'I am operating in demo mode. Connect the FastAPI backend to process live document queries. The RAG pipeline is ready — configure your OPENAI_API_KEY and MONGODB_URL to enable real-time intelligence.',
+          sources: []
+        } : m
+      ))
+      setIsLoading(false)
+    }, 1200)
+  }
+
+  return (
+    <div className="flex h-full w-full overflow-hidden">
+
+      {/* ── Chat Panel ──────────────────────────────────────────────── */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${activeSource ? 'mr-80' : ''}`}>
+
+        {/* Sub-header */}
+        <div className="h-12 border-b border-border bg-popover flex items-center px-6 gap-3 shrink-0">
+          <div className="w-5 h-5 rounded bg-secondary border border-border flex items-center justify-center">
+            <MessageSquare className="w-3 h-3 text-muted-foreground" />
           </div>
-        </header>
+          <span className="text-sm font-semibold">Document Intelligence Chat</span>
+          <span className="text-border">·</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-amber-400" />
+            RAG Mode Active
+          </span>
+          <div className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground border border-amber-400/20 bg-amber-400/5 rounded px-2 py-0.5">
+            <AlertCircle className="w-3 h-3 text-amber-400" />
+            Demo Mode — Connect backend for live queries
+          </div>
+        </div>
 
-        {/* Chat History */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 scroll-smooth">
-          <div className="max-w-4xl mx-auto space-y-6">
-            {messages.map((msg) => (
-              <motion.div 
+        {/* Messages */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-none">
+          <div className="max-w-3xl mx-auto space-y-5">
+            {/* Context banner */}
+            <div className="premium-card px-4 py-3 flex items-start gap-3">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-foreground">Context: Legal Contracts Workspace</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Querying 4,218 indexed documents · BM25 + semantic hybrid retrieval · Cross-encoder reranking
+                </p>
+              </div>
+            </div>
+
+            {messages.map(msg => (
+              <MessageBubble
                 key={msg.id}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.15 }}
-                className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded bg-secondary border border-border flex items-center justify-center shrink-0">
-                    <Bot className="w-4 h-4 text-foreground" />
-                  </div>
-                )}
-                
-                <div className={`max-w-[85%] rounded-lg p-5 ${
-                  msg.role === 'user' 
-                    ? 'bg-primary text-primary-foreground border border-primary' 
-                    : 'bg-popover border border-border text-foreground shadow-subtle'
-                }`}>
-                  <div className="prose prose-sm prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-background prose-pre:border prose-pre:border-border prose-a:text-foreground prose-a:underline prose-a:underline-offset-2">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
-
-                  {/* Inline Sources/Citations Container */}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-5 pt-4 border-t border-border flex flex-wrap gap-2">
-                      {msg.sources.map((source: any, idx: number) => (
-                        <button 
-                          key={source.id}
-                          onClick={() => setActiveSource(source)}
-                          className="flex items-center gap-2 px-2.5 py-1 rounded bg-background border border-border text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span>[{idx + 1}] {source.title.substring(0, 24)}...</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {msg.role === 'user' && (
-                  <div className="w-8 h-8 rounded bg-secondary border border-border flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4 text-foreground" />
-                  </div>
-                )}
-              </motion.div>
+                msg={msg}
+                onSourceClick={(s) => setActiveSource(prev => prev?.id === s.id ? null : s)}
+                activeSourceId={activeSource?.id ?? null}
+              />
             ))}
           </div>
         </div>
 
-        {/* Input Area */}
-        <div className="p-4 sm:p-6 bg-popover border-t border-border">
-          <div className="max-w-4xl mx-auto relative">
-            <form onSubmit={handleSend} className="relative flex items-center">
-              <input 
-                type="text" 
+        {/* Suggested queries */}
+        {messages.length <= 2 && (
+          <div className="px-6 pb-3 flex gap-2 flex-wrap max-w-3xl mx-auto w-full">
+            {SUGGESTED_QUERIES.map(q => (
+              <button
+                key={q}
+                onClick={() => handleSend(q)}
+                className="text-xs text-muted-foreground border border-border rounded-md px-3 py-1.5 hover:bg-secondary hover:text-foreground transition-colors"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input */}
+        <div className="border-t border-border bg-popover p-4 shrink-0">
+          <div className="max-w-3xl mx-auto">
+            <form onSubmit={(e) => { e.preventDefault(); handleSend() }} className="flex gap-2">
+              <input
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about your enterprise documents..." 
-                className="w-full bg-background border border-border rounded-md pl-4 pr-12 py-3.5 text-sm text-foreground focus:outline-none focus:border-ring transition-colors shadow-subtle"
+                onChange={e => setInput(e.target.value)}
+                placeholder="Ask anything about your enterprise documents..."
+                disabled={isLoading}
+                className="input-field flex-1"
               />
-              <button 
+              <button
                 type="submit"
-                disabled={!input.trim()}
-                className="absolute right-2 w-8 h-8 rounded bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:hover:bg-primary transition-colors"
+                disabled={!input.trim() || isLoading}
+                className="btn-primary px-4 disabled:opacity-40"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>
             </form>
-            <div className="text-center mt-3">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Verify generated responses with source material</span>
-            </div>
+            <p className="text-[10px] text-muted-foreground text-center mt-2">
+              All answers are grounded in retrieved sources — verify critical decisions with original documents.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Evidence Inspector Side Panel */}
+      {/* ── Evidence Inspector ───────────────────────────────────────── */}
       <AnimatePresence>
         {activeSource && (
-          <motion.div 
-            key="evidence-inspector"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+          <motion.div
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'tween', duration: 0.2 }}
-            className="w-80 border-l border-border bg-popover absolute right-0 top-0 bottom-0 z-20 shadow-modal flex flex-col"
+            className="absolute right-0 top-0 bottom-0 w-80 border-l border-border bg-popover z-30 flex flex-col shadow-xl"
           >
-            <div className="h-14 flex items-center justify-between px-4 border-b border-border bg-card">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            {/* Panel header */}
+            <div className="h-12 flex items-center justify-between px-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-2 text-sm font-semibold">
                 <FileText className="w-4 h-4 text-muted-foreground" />
-                Evidence
-              </h2>
-              <button 
+                Evidence Inspector
+              </div>
+              <button
                 onClick={() => setActiveSource(null)}
-                className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                className="btn-icon w-7 h-7"
+                aria-label="Close"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+
+            {/* Panel body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-5">
+              {/* Source doc */}
               <div>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Source Document</h3>
-                <div className="p-3 rounded bg-background border border-border flex items-start gap-3 cursor-pointer hover:bg-secondary transition-colors group">
-                  <FileText className="w-4 h-4 text-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-medium text-foreground break-all leading-tight">{activeSource.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-1 group-hover:text-foreground transition-colors">
-                      View Original <ExternalLink className="w-3 h-3" />
+                <p className="section-label mb-2">Source Document</p>
+                <div className="premium-card p-3 flex items-start gap-2.5 cursor-pointer hover:bg-secondary transition-colors group">
+                  <div className="w-8 h-8 rounded bg-secondary border border-border flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-foreground break-all leading-snug">{activeSource.title}</p>
+                    {activeSource.page && (
+                      <p className="text-[10px] text-muted-foreground mt-1">Page {activeSource.page}</p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1 group-hover:text-foreground transition-colors">
+                      Open original <ExternalLink className="w-2.5 h-2.5" />
                     </p>
                   </div>
                 </div>
               </div>
 
+              {/* Confidence */}
               <div>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Retrieval Metric</h3>
-                <div className="flex items-center justify-between p-3 rounded bg-background border border-border">
-                  <span className="text-xs text-muted-foreground">Confidence Score</span>
-                  <span className="text-xs font-mono font-bold text-success bg-success/10 px-1.5 py-0.5 rounded">
-                    {(activeSource.confidence * 100).toFixed(1)}%
-                  </span>
+                <p className="section-label mb-2">Retrieval Score</p>
+                <div className="premium-card p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Cosine similarity</span>
+                    <span className="font-mono-number font-bold text-emerald-400">{(activeSource.confidence * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-400 rounded-full transition-all"
+                      style={{ width: `${activeSource.confidence * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {activeSource.confidence > 0.9 ? 'High confidence — strongly relevant' :
+                     activeSource.confidence > 0.8 ? 'Good confidence — likely relevant' : 'Moderate confidence — review manually'}
+                  </p>
                 </div>
               </div>
 
+              {/* Extracted chunk */}
               <div>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Extracted Context</h3>
-                <div className="p-4 rounded bg-background border border-border">
-                  <p className="text-xs text-foreground leading-relaxed">
-                    {activeSource.snippet}
+                <p className="section-label mb-2">Retrieved Chunk</p>
+                <div className="premium-card p-3">
+                  <p className="text-xs text-foreground leading-relaxed italic">
+                    "{activeSource.snippet}"
                   </p>
                 </div>
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-2 pt-2">
+                <button className="btn-secondary w-full justify-center text-xs">
+                  Open in Document Viewer
+                </button>
+                <button className="btn-ghost w-full justify-center text-xs text-muted-foreground">
+                  Flag for Review
+                </button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   )
 }
