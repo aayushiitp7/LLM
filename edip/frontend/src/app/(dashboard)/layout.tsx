@@ -189,21 +189,24 @@ export default function DashboardLayout({
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-              className="fixed inset-y-0 left-0 w-64 bg-surface-200 border-r border-white/5 z-50 flex flex-col md:hidden"
-            >
+          <motion.div
+            key="mobile-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+        {isMobileMenuOpen && (
+          <motion.div
+            key="mobile-drawer"
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+            className="fixed inset-y-0 left-0 w-64 bg-surface-200 border-r border-white/5 z-50 flex flex-col md:hidden"
+          >
               {/* Duplicate sidebar content for mobile */}
               <div className="h-16 flex items-center justify-between px-6 border-b border-white/5">
                 <span className="text-sm font-bold text-foreground">DocIntel</span>
@@ -228,7 +231,6 @@ export default function DashboardLayout({
                 </nav>
               </div>
             </motion.div>
-          </>
         )}
       </AnimatePresence>
     </div>
