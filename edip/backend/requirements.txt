@@ -1,46 +1,15 @@
-# ============================================================
-# Vercel-compatible slim requirements
-# NO heavy ML libs (no PaddleOCR, sentence-transformers, spaCy)
-# All local services replaced by cloud APIs
-# ============================================================
-
-# Core Framework
 fastapi==0.110.3
 uvicorn==0.29.0
 python-multipart==0.0.9
-httpx==0.27.0
-mangum==0.17.0
-
-# Pydantic / Settings
 pydantic==2.7.1
 pydantic-settings==2.2.1
-email-validator==2.1.1
-
-# Authentication / Security
-python-jose[cryptography]==3.3.0
-bcrypt==4.1.3
-passlib[bcrypt]==1.7.4
-cryptography==42.0.8
-pyotp==2.9.0
-
-# Database — Neon (serverless Postgres) via asyncpg
-asyncpg==0.29.0
-sqlalchemy[asyncio]==2.0.30
-
-# Cache — Upstash Redis (HTTP-based, works serverlessly)
-upstash-redis==1.1.0
-
-# LLM / AI — OpenAI API (cloud, no local model)
-openai==1.30.3
-tiktoken==0.7.0
-
-# Vector Store — Pinecone (cloud, no local FAISS)
-pinecone-client==4.1.0
-
-# Storage — AWS S3 or Vercel Blob
-boto3==1.34.103
-
-# Utilities
+motor==3.4.0
+beanie==1.26.0
+chromadb==0.5.0
+paddleocr>=2.7.3
+sentence-transformers>=2.7.0
+pymupdf>=1.24.1
 python-dotenv==1.0.1
 structlog==24.1.0
-slowapi==0.1.9
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0

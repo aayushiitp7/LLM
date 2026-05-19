@@ -25,16 +25,7 @@ interface Doc {
   department: string
 }
 
-const MOCK_DOCS: Doc[] = [
-  { id: '1', title: 'Q3_Financial_Projections_v4.xlsx', type: 'excel', size: '2.4 MB', status: 'indexed', date: '2h ago', user: 'Alice Chen', pages: 18, riskScore: 12, department: 'Finance' },
-  { id: '2', title: 'Data_Center_Expansion_Budget_2026.pdf', type: 'pdf', size: '8.1 MB', status: 'processing', date: '4h ago', user: 'System', pages: 42, department: 'Engineering' },
-  { id: '3', title: 'Employee_Handbook_2026_Final.pdf', type: 'pdf', size: '15.2 MB', status: 'indexed', date: 'Yesterday', user: 'HR Dept', pages: 128, riskScore: 8, department: 'HR' },
-  { id: '4', title: 'API_Architecture_Review_Q4.docx', type: 'word', size: '1.1 MB', status: 'failed', date: 'Yesterday', user: 'Engineering', pages: 24, department: 'Engineering' },
-  { id: '5', title: 'Client_Contract_AcmeCorp_MSA_2023.pdf', type: 'pdf', size: '4.5 MB', status: 'indexed', date: 'Oct 12', user: 'Legal', pages: 67, riskScore: 78, department: 'Legal' },
-  { id: '6', title: 'Q2_Marketing_Campaign_Assets.zip', type: 'zip', size: '142 MB', status: 'indexed', date: 'Oct 10', user: 'Marketing', department: 'Marketing' },
-  { id: '7', title: 'Vendor_Agreement_DataSync_v2.pdf', type: 'pdf', size: '3.2 MB', status: 'indexed', date: 'Oct 8', user: 'Procurement', pages: 31, riskScore: 61, department: 'Legal' },
-  { id: '8', title: 'Board_Meeting_Minutes_Oct2026.docx', type: 'word', size: '0.8 MB', status: 'queued', date: 'Oct 7', user: 'Admin', pages: 12, department: 'Executive' },
-]
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 const TYPE_ICON: Record<DocType, React.ReactNode> = {
   pdf: <FileText className="w-3.5 h-3.5" />,
@@ -72,8 +63,33 @@ const RiskChip = ({ score }: { score?: number }) => {
 }
 
 // ── Drag and drop upload zone ─────────────────────────────────────────────────
-function UploadZone({ onClose }: { onClose: () => void }) {
+function UploadZone({ onClose, onUploadSuccess }: { onClose: () => void, onUploadSuccess?: () => void }) {
   const [dragging, setDragging] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        await fetch(`${API_BASE}/api/v1/ingestion/upload`, {
+          method: "POST",
+          headers: { "Authorization": "Bearer local" },
+          body: formData
+        });
+      }
+      if (onUploadSuccess) onUploadSuccess();
+      onClose();
+    } catch (e) {
+      console.error("Upload failed", e);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <motion.div
@@ -100,9 +116,9 @@ function UploadZone({ onClose }: { onClose: () => void }) {
           <p className="text-sm font-medium">{dragging ? 'Release to upload' : 'Drop files here'}</p>
           <p className="text-[10px] text-muted-foreground mt-1">PDF, DOCX, XLSX, ZIP, PNG · Max 100MB</p>
         </div>
-        <label className="btn-secondary text-xs cursor-pointer">
-          Browse Files
-          <input type="file" multiple className="hidden" accept=".pdf,.docx,.xlsx,.zip,.png,.jpg" />
+        <label className={`btn-secondary text-xs cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          {uploading ? 'Uploading...' : 'Browse Files'}
+          <input type="file" multiple className="hidden" accept=".pdf,.docx,.xlsx,.zip,.png,.jpg" onChange={e => handleFiles(e.target.files)} />
         </label>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] text-muted-foreground">
@@ -121,10 +137,40 @@ export default function DocumentsPage() {
   const [showUpload, setShowUpload] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  const filtered = MOCK_DOCS.filter(doc => {
+  const [docs, setDocs] = useState<Doc[]>([])
+  
+  const fetchDocs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/documents`, {
+        headers: { 'Authorization': 'Bearer local' }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDocs((data.items || []).map((d:any) => ({
+          id: d.id,
+          title: d.filename || d.title,
+          type: (d.title||'').toLowerCase().endsWith('.pdf') ? 'pdf' : 'word',
+          size: d.file_size_bytes ? `${(d.file_size_bytes/1024/1024).toFixed(1)} MB` : 'Unknown',
+          status: d.status || 'indexed',
+          date: new Date(d.created_at).toLocaleDateString(),
+          user: 'System',
+          pages: d.page_count,
+          department: d.department || 'General'
+        })))
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+  
+  React.useEffect(() => {
+    fetchDocs()
+  }, [fetchDocs])
+
+  const filtered = docs.filter(doc => {
     const matchSearch = doc.title.toLowerCase().includes(search.toLowerCase()) ||
-                        doc.department.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || doc.status === filter || doc.department.toLowerCase() === filter
+                        (doc.department || '').toLowerCase().includes(search.toLowerCase())
+    const matchFilter = filter === 'all' || doc.status === filter || (doc.department||'').toLowerCase() === filter
     return matchSearch && matchFilter
   })
 
@@ -162,7 +208,7 @@ export default function DocumentsPage() {
 
       {/* Upload zone */}
       <AnimatePresence>
-        {showUpload && <UploadZone onClose={() => setShowUpload(false)} />}
+        {showUpload && <UploadZone onClose={() => setShowUpload(false)} onUploadSuccess={fetchDocs} />}
       </AnimatePresence>
 
       {/* Stats strip */}

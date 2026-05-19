@@ -26,25 +26,12 @@ interface Message {
   isError?: boolean
 }
 
-// ── Seed conversation ─────────────────────────────────────────────────────────
-const SEEDS: Message[] = [
-  { id: 1, role: 'user', content: 'Which contracts have termination notice periods less than 30 days?' },
-  {
-    id: 2, role: 'assistant',
-    content: `Based on my analysis of the contract corpus, **3 contracts** have termination notice periods below 30 days:\n\n1. **Acme Corp MSA (2023)** — 14-day notice (§12.3)\n2. **Vendor Agreement — DataSync Ltd** — 7-day notice for T&M engagements\n3. **SubProcessor DPA — CloudHost Inc** — 21-day notice on data processing termination\n\nThis is a **compliance risk** under your standard contract policy (minimum 30-day notice). I recommend escalating items 1 and 2 for renegotiation.`,
-    sources: [
-      { id: 's1', title: 'Acme_Corp_MSA_2023.pdf', confidence: 0.97, snippet: '§12.3 Either party may terminate this Agreement upon 14 days written notice to the other party without cause.', page: 8 },
-      { id: 's2', title: 'DataSync_Vendor_Agreement_v2.pdf', confidence: 0.94, snippet: 'For time-and-materials engagements, either party may terminate with 7 calendar days written notice.', page: 3 },
-      { id: 's3', title: 'CloudHost_DPA_SubProcessor.pdf', confidence: 0.89, snippet: 'Termination of data processing activities shall be notified 21 days in advance per GDPR Article 28.', page: 12 },
-    ]
-  }
-]
+const SEEDS: Message[] = []
 
 const SUGGESTED = [
-  'Summarize all invoices exceeding $100k in Q3',
-  'Which employees have non-compete clauses expiring in 2026?',
+  'Summarize all invoices from the last quarter',
   'Find all contracts with auto-renewal provisions',
-  'What are the key risks in the Acme Corp agreement?',
+  'What are the key risks in our MSA templates?',
 ]
 
 // ── Markdown formatter ────────────────────────────────────────────────────────
@@ -168,55 +155,33 @@ export default function ChatPage() {
     setLoading(true)
 
     try {
-      if (backendStatus === 'online') {
-        // Attempt real API call
-        const res = await fetch(`${API_BASE}/api/v1/chat/query`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: text, collection: 'enterprise_docs', top_k: 5 }),
-          signal: AbortSignal.timeout(30000),
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setMessages(p => p.map(m => m.isLoading ? {
-            ...m, isLoading: false,
-            content: data.answer || data.response || data.content || 'No response from model.',
-            sources: (data.sources || data.citations || []).map((s: any, i: number) => ({
-              id: String(i), title: s.title || s.filename || s.source || 'Document',
-              confidence: s.score || s.confidence || 0.85,
-              snippet: s.content || s.text || s.snippet || '',
-              page: s.page,
-            }))
-          } : m))
-          setLoading(false)
-          return
-        }
+      // Real API call
+      const res = await fetch(`${API_BASE}/api/v1/chat/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer local' },
+        body: JSON.stringify({ query: text, collection: 'enterprise_docs', top_k: 5 }),
+        signal: AbortSignal.timeout(30000),
+      })
+      if (!res.ok) {
+         throw new Error(`API Error: ${res.statusText}`)
       }
-      throw new Error('Offline')
-    } catch {
-      // Intelligent fallback based on query content
-      const lower = text.toLowerCase()
-      let ans = ''
-      let sources: Source[] = []
-
-      if (lower.includes('termination') || lower.includes('notice')) {
-        ans = `Based on the indexed contract corpus, **3 contracts** have termination notice periods below 30 days:\n\n1. **Acme Corp MSA (2023)** — 14-day notice clause (§12.3)\n2. **Vendor Agreement — DataSync Ltd** — 7-day notice for T&M engagements\n3. **SubProcessor DPA — CloudHost Inc** — 21-day notice\n\nThis represents a compliance risk under your 30-day notice policy.`
-        sources = SEEDS[1].sources!
-      } else if (lower.includes('invoice') || lower.includes('q3') || lower.includes('100k')) {
-        ans = `Found **7 invoices** from Q3 exceeding $100,000:\n\n1. **INV-2026-0341** — Acme Corp — $284,500 (Aug 2026)\n2. **INV-2026-0389** — DataSync Ltd — $142,200 (Sep 2026)\n3. **INV-2026-0412** — CloudHost Inc — $198,750 (Sep 2026)\n\n**Total Q3 exposure**: $625,450 across 7 vendors.`
-        sources = [{ id: 'i1', title: 'Q3_Invoice_Register.xlsx', confidence: 0.96, snippet: 'INV-2026-0341: Acme Corp, $284,500, Date: Aug 15 2026, Status: Paid', page: 3 }]
-      } else if (lower.includes('non-compete') || lower.includes('employee') || lower.includes('2026')) {
-        ans = `**4 employees** have non-compete clauses expiring in 2026:\n\n1. **Sarah K.** (Engineering Lead) — Expires March 2026 — 12-month radius\n2. **Michael T.** (Sales Director) — Expires July 2026 — 24-month industry-wide\n3. **Dr. Priya R.** (Research) — Expires November 2026 — 18-month IP clause\n4. **James W.** (Product) — Expires December 2026 — 12-month competitor restriction`
-        sources = [{ id: 'e1', title: 'Employee_Agreements_2024.pdf', confidence: 0.93, snippet: 'Non-compete period: 12 months from termination date, within 50-mile radius.', page: 14 }]
-      } else if (lower.includes('risk') || lower.includes('acme')) {
-        ans = `**Acme Corp MSA Risk Analysis:**\n\n**High Risk (Score: 78/100):**\n- §12.3: 14-day termination notice (below 30-day policy minimum)\n- §8.1: Uncapped liability exposure — no limitation clause\n- §15.2: Automatic renewal with no opt-out notification window\n\n**Medium Risk:**\n- §6.0: Governing law (Delaware) may conflict with local employment law`
-        sources = [{ id: 'r1', title: 'Acme_Corp_MSA_2023.pdf', confidence: 0.97, snippet: '§8.1 Each party shall be liable for all damages arising from breach...', page: 11 }]
-      } else {
-        ans = `I processed your query across the indexed document corpus. The backend RAG pipeline is currently in local mode — deploy the FastAPI service at \`${API_BASE}\` to enable full live inference.\n\nYour query: **"${text}"** has been logged for processing once the backend connects.`
-      }
-
-      await new Promise(r => setTimeout(r, 1000 + Math.random() * 400))
-      setMessages(p => p.map(m => m.isLoading ? { ...m, isLoading: false, content: ans, sources } : m))
+      const data = await res.json()
+      setMessages(p => p.map(m => m.isLoading ? {
+        ...m, isLoading: false,
+        content: data.answer || data.response || data.content || 'No response from model.',
+        sources: (data.sources || data.citations || []).map((s: any, i: number) => ({
+          id: String(i), title: s.title || s.filename || s.source || 'Document',
+          confidence: s.score || s.confidence || 0.85,
+          snippet: s.content || s.text || s.snippet || '',
+          page: s.page,
+        }))
+      } : m))
+    } catch (e: any) {
+      setMessages(p => p.map(m => m.isLoading ? { 
+        ...m, isLoading: false, isError: true, 
+        content: `Connection failed: ${e.message}. Ensure backend is running.` 
+      } : m))
+    } finally {
       setLoading(false)
     }
   }
