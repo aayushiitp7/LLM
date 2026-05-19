@@ -25,7 +25,7 @@ interface Doc {
   department: string
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
 
 const TYPE_ICON: Record<DocType, React.ReactNode> = {
   pdf: <FileText className="w-3.5 h-3.5" />,

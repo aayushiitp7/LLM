@@ -4,7 +4,11 @@ Simple Chat API for Local RAG
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-import chromadb
+try:
+    import chromadb
+    CHROMA_AVAILABLE = True
+except ImportError:
+    CHROMA_AVAILABLE = False
 import httpx
 
 from app.core.security import get_current_user
@@ -24,25 +28,52 @@ async def rag_query(
 ):
     """Simple RAG implementation without microservices."""
     try:
-        # 1. Retrieve from ChromaDB
-        chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_DIR)
-        collection = chroma_client.get_or_create_collection(name=settings.CHROMA_COLLECTION)
-        
-        results = collection.query(
-            query_texts=[body.query],
-            n_results=body.top_k
-        )
-        
         chunks = []
         sources = []
-        if results and results["documents"] and len(results["documents"]) > 0:
-            for i, doc in enumerate(results["documents"][0]):
-                chunks.append(doc)
-                metadata = results["metadatas"][0][i] if results["metadatas"] else {}
+        
+        # Determine if we should query Chroma or fallback to MongoDB search
+        use_chroma = CHROMA_AVAILABLE
+        if use_chroma:
+            try:
+                chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_DIR)
+                collection = chroma_client.get_or_create_collection(name=settings.CHROMA_COLLECTION)
+                results = collection.query(
+                    query_texts=[body.query],
+                    n_results=body.top_k
+                )
+                if results and results["documents"] and len(results["documents"]) > 0:
+                    for i, doc in enumerate(results["documents"][0]):
+                        chunks.append(doc)
+                        metadata = results["metadatas"][0][i] if results["metadatas"] else {}
+                        sources.append({
+                            "title": metadata.get("source", "Unknown"),
+                            "snippet": doc[:300],
+                            "confidence": metadata.get("confidence", 0.9)
+                        })
+            except Exception as e:
+                logger.warning(f"ChromaDB failed, falling back to MongoDB: {e}")
+                use_chroma = False
+                
+        if not use_chroma:
+            # MongoDB Text search / Regex fallback
+            from app.models.document import DocumentChunk, Document
+            import uuid
+            
+            # Simple keyword search fallback
+            words = [w for w in body.query.split() if len(w) > 3]
+            if not words:
+                words = [body.query]
+            regex_query = "|".join(words)
+            
+            db_chunks = await DocumentChunk.find({"content": {"$regex": regex_query, "$options": "i"}}).limit(body.top_k).to_list()
+            for c in db_chunks:
+                chunks.append(c.content)
+                doc = await Document.get(c.document_id)
+                filename = doc.original_filename if doc else "Unknown"
                 sources.append({
-                    "title": metadata.get("source", "Unknown"),
-                    "snippet": doc[:300],
-                    "confidence": metadata.get("confidence", 0.9)
+                    "title": filename,
+                    "snippet": c.content[:300],
+                    "confidence": 0.8
                 })
                 
         if not chunks:
